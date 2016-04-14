@@ -42,7 +42,7 @@ SymbolEntry *for_counter;
 is 1 if we are inside a routine
 */
 bool is_global = 1;
-
+int array;
 condition *for_list;
 
 
@@ -60,7 +60,7 @@ condition *for_list;
 	TO_TYPE to;
 };
 
-%token T_id		"id"
+%token T_id			"id"
 %token T_for 		"FOR"
 %token T_next		"NEXT"
 %token T_return		"return"
@@ -71,15 +71,15 @@ condition *for_list;
 %token T_step		"STEP"
 %token T_writeln	"WRITELN"
 %token T_break		"break"
-%token T_do		"do"
+%token T_do			"do"
 %token T_func		"FUNC"
 %token T_switch		"switch"
 %token T_writesp	"WRITESP"
 %token T_case 		"case"
 %token T_downto		"DOWNTO"
-%token T_if		"if"
+%token T_if			"if"
 %token T_proc		"PROC"
-%token T_to		"TO"
+%token T_to			"TO"
 %token T_writespln	"WRITESPLN"
 %token T_char		"char"
 %token T_else		"else"
@@ -92,12 +92,12 @@ condition *for_list;
 %token T_while		"while"
 %token T_continue 	"continue"
 %token T_mod 		"MOD"
-%token T_int_const	"int_const"
+%token T_int_const		"int_const"
 %token T_float_const	"float_const"
-%token T_char_const	"char_const"
+%token T_char_const		"char_const"
 %token T_string_const	"string_const"
-%token T_pe		"+="
-%token T_me		"-="
+%token T_pe			"+="
+%token T_me			"-="
 %token T_mule		"*="
 %token T_dive		"/="
 %token T_mode		"%="
@@ -117,24 +117,24 @@ condition *for_list;
 %nonassoc "then"
 %nonassoc "else"
 
-%type<real> "float_const"
-%type<num> "int_const"
-%type<num> "char_const"
-%type<n> "string_const"
-%type<n> "id"
-%type<t> type
-%type<v> expr
-%type<v> const_expr
-%type<v> l_value
-%type<v> more_expr_br
-%type<headNEXT> stmt
+%type<real> 	"float_const"
+%type<num> 		"int_const"
+%type<num> 		"char_const"
+%type<n> 		"string_const"
+%type<n> 		"id"
+%type<t> 		type
+%type<v> 		expr
+%type<v> 		const_expr
+%type<v> 		l_value
+%type<v> 		more_expr_br
+%type<headNEXT>	stmt
 %type<headNEXT> thenclause
 %type<headNEXT> block
 %type<headNEXT> inner_block
-%type<t> call
-%type<num> step
-%type<to> to
-%type<t> matrixD
+%type<t> 		call
+%type<num> 		step
+%type<to> 		to
+%type<t> 		matrixD
 %type<headNEXT> local_def
 %%
 
@@ -152,54 +152,29 @@ declaration	:
 const_expr_more :/*empty*/
 		|const_expr_more ',' "id" '=' const_expr
 		{
-			/*Quadruples code*/
-			quad *x = (quad *) new(sizeof(quad));
-			quad *y = (quad *) new(sizeof(quad));
-			quad *z = (quad *) new(sizeof(quad));
-
-			if ($5.calculated!=1) {
-				yyerror("Const expression must be evaluated");
-			}
-
 			compatible_assignment(const_expr_type, $5.type);
 			switch (const_expr_type->kind) {
 			case TYPE_REAL:
-				x->type=QUAD_REAL;
-				if($5.type->kind == TYPE_REAL) {
+				if($5.type->kind == TYPE_REAL)
 					se = newConstant($3, const_expr_type, $5.floatval);
-					x->value.floatval = $5.floatval;
-				} else if ($5.type->kind == TYPE_INTEGER) {
+				else if ($5.type->kind == TYPE_INTEGER)
 					se = newConstant($3, const_expr_type, $5.value);
-					x->value.floatval = $5.value;
-				}
 				break;
 			case TYPE_INTEGER:
 				se = newConstant($3, const_expr_type, $5.value);
-				x->type = QUAD_INTEGER;
-				x->value.intval = $5.value;
 				break;
 			case TYPE_BOOLEAN:
 				se = newConstant($3, const_expr_type, $5.value);
-				$5.se = conversion_from_condition_to_expression(&$5);
-				x->type = QUAD_BOOL;
-				x->value.se = $5.se;
 				break;
 			case TYPE_CHAR:
-				x->type = QUAD_CHAR;
-				se = newConstant($3, const_expr_type, $5.value);
 				if ($5.type->kind == TYPE_INTEGER) 
-					x->value.intval = $5.value & 0xFF;
+					se = newConstant($3, const_expr_type, $5.value & 0xFF);
 				else if ($5.type->kind == TYPE_CHAR) 
-					x->value.intval = $5.value;
+					se = newConstant($3, const_expr_type, $5.value);
 				break;
 			default:
-				printf("Unknown expression type\n");
+				printf("Only basic types can be constant expressions\n");
 			}
-			y->type= QUAD_EMPTY;
-			z->type= QUAD_SE;
-			z->value.se=se;
-			GENQUAD(OP_assign, x, y, z);
-			/*End Quadruples code*/
 		}
 		;
 
@@ -208,62 +183,28 @@ const_def 	:"const" type {
 			}"id" '=' const_expr const_expr_more ';'
 			{
 			compatible_assignment($2, $6.type);
-			//se =newConstant($3,$2);
-
-			/*Quadruples code*/
-			quad *x = (quad *) new(sizeof(quad));
-			quad *y = (quad *) new(sizeof(quad));
-			quad *z = (quad *) new(sizeof(quad));
-
-			if ($6.calculated != 1) {
-				yyerror("Const expression must be evaluated ");
-			}
-
 			switch (const_expr_type->kind) {
 			case TYPE_REAL:
-				x->type=QUAD_REAL;
-				if ($6.type->kind == TYPE_REAL) {
+				if ($6.type->kind == TYPE_REAL)
 					se = newConstant($4, const_expr_type, $6.floatval);
-					x->value.floatval = $6.floatval;
-				} else if ($6.type->kind == TYPE_INTEGER) {
+				else if ($6.type->kind == TYPE_INTEGER)
 					se = newConstant($4, const_expr_type, $6.value);
-					x->value.floatval = $6.value;
-				}
 				break;
 			case TYPE_INTEGER:
 				se = newConstant($4, const_expr_type, $6.value);
-				x->type = QUAD_INTEGER;
-				x->value.intval = $6.value;
 				break;
 			case TYPE_BOOLEAN:
 				se = newConstant($4, const_expr_type, $6.value);
-				$6.se = conversion_from_condition_to_expression(&$6);
-				x->type = QUAD_BOOL;
-				x->value.se = $6.se;
 				break;
 			case TYPE_CHAR:
-				x->type = QUAD_CHAR;
-				se = newConstant($4, const_expr_type, $6.value);
 				if ($6.type->kind == TYPE_INTEGER)
-					x->value.intval = $6.value & 0xFF;
+					se = newConstant($4, const_expr_type, $6.value & 0xFF);
 				else if ($6.type->kind == TYPE_CHAR)
-					x->value.intval = $6.value; 
-				break;
-			case TYPE_ARRAY:
-				if (equalType(const_expr_type->refType, typeChar)) {
-					se = newConstant($4, const_expr_type, $6.strvalue);
-					x->type = QUAD_STR;
-					x->value.strval = $6.strvalue;
-				}
+					se = newConstant($4, const_expr_type, $6.value);
 				break;
 			default:
-				printf("Unknown expression type\n");
+				printf("Only basic types can be constant expressions\n");
 			}
-			y->type = QUAD_EMPTY;
-			z->type = QUAD_SE;
-			z->value.se = se;
-			GENQUAD(OP_assign, x, y, z);
-			/*End Quadruples code*/
 		}
 		;
 
@@ -277,7 +218,8 @@ var_def :type
 var_init	:"id" '=' expr
 		{
 			se = newVariable($1, var_type);
-			if (is_global && $3.calculated != 1)
+			if (is_global)
+				if($3.calculated != 1)
 					yyerror("Global variable if initialized must be with an "
 							"evaluated expression");
 			/*Quadruples code*/
@@ -378,7 +320,6 @@ matrixD 	:/*empty*/
 			if ($2.calculated && (!$2.value > 0))
 				yyerror("IndexError: Array index out of range");
 		}
-
 		matrixD 	/*right recursion  :(*/
 		{
 			$$ = typeArray($2.value, $5);
@@ -424,14 +365,14 @@ formal	:"id"
 				yyerror("IndexError: Array index out of range");
 			formal_name = $1;
 			formal_mode = PASS_BY_REFERENCE;
-			var_type = typeArray($3.value, var_type);
+			var_type = typeArray($3.value, $5);
 		}
 		|"id" '[' ']' matrixD
 		 /*In parameters we can omit the first dimension of a matrix*/
 		{
 			formal_name = $1;
 			formal_mode = PASS_BY_REFERENCE;
-			var_type = typeIArray(var_type);
+			var_type = typeIArray($4);
 		}
 		;
 proc 	:"PROC" "id" '('
@@ -603,11 +544,10 @@ type	:"int"		{ $$ = typeInteger;	}
 const_expr	:expr
 		{
 			$$ = $1;
-			/*if ($1.calculated ==0) {
-				char str[80];
-				strcpy(str,$1.se->id);
-				yyerror(strcat(str," must be a constant expression"));
-			}*/
+			if ($1.calculated ==0) {
+				yyerror("Only constant expressions or can be assigned"
+						" to constant expressions");
+			}
 		}
 		;
 expr 	:"int_const"
@@ -636,45 +576,15 @@ expr 	:"int_const"
 		}
 		|"true"
 		{
-
 			$$.type = typeBoolean;
 			$$.value = 1;
 			$$.calculated = 1;
-
-			/*Quadruples code*/
-			quad *x = (quad *) new(sizeof(quad));
-			quad *y = (quad *) new(sizeof(quad));
-			quad *z = (quad *) new(sizeof(quad));
-
-			x->type = QUAD_EMPTY;
-			y->type = QUAD_EMPTY;
-			z->type = QUAD_TOFILL;
-
-			$$.headTRUE = MAKELIST(z, quadNext);
-			$$.headFALSE = EMPTYLIST();
-			GENQUAD(OP_JUMP, x, y, z);
-			/*End Quadruples code*/
 		}
 		|"false"
 		{
-			/*Quadruples code*/
 			$$.type = typeBoolean;
 			$$.value = 0;
 			$$.calculated = 1;
-
-			quad *x = (quad *) new(sizeof(quad));
-			quad *y = (quad *) new(sizeof(quad));
-			quad *z = (quad *) new(sizeof(quad));
-
-			x->type = QUAD_EMPTY;
-			y->type = QUAD_EMPTY;
-			z->type = QUAD_TOFILL;
-
-			$$.headTRUE = EMPTYLIST();
-			$$.headFALSE = MAKELIST(z, quadNext);
-
-			GENQUAD(OP_JUMP, x, y, z);
-			/*End Quadruples code*/
 		}
 		|'(' expr ')'
 		{
@@ -686,9 +596,10 @@ expr 	:"int_const"
 				$$.calculated = 0;
 			else 
 				$$.calculated = 1;
+
 			$$.type = $1.type;
-			$$.se = $1.se;
-			if ($$.type == typeBoolean && $$.calculated == 0) {
+
+			/*if ($$.type == typeBoolean && $$.calculated == 0) {
 				quad *x = (quad *) new(sizeof(quad));
 				quad *y = (quad *) new(sizeof(quad));
 				quad *z = (quad *) new(sizeof(quad));
@@ -714,6 +625,7 @@ expr 	:"int_const"
 				GENQUAD(OP_JUMP, x, y, z);
 				DisplayCList(&$$.headFALSE);
 			}
+			*/
 			if ($1.se->entryType == ENTRY_CONSTANT) {
 				switch ($1.type->kind) {
 				case TYPE_REAL:
@@ -722,23 +634,9 @@ expr 	:"int_const"
 				case TYPE_INTEGER:
 					$$.value = $1.se->u.eConstant.value.vInteger;
 					break;
-				case TYPE_BOOLEAN:{
-					quad *x = (quad *) new(sizeof(quad));
-					quad *y = (quad *) new(sizeof(quad));
-					quad *z = (quad *) new(sizeof(quad));
-					x->type = QUAD_EMPTY;
-					y->type = QUAD_EMPTY;
-					z->type = QUAD_TOFILL;
-					if ($1.se->u.eConstant.value.vInteger == 1) {
-						$$.headTRUE = MAKELIST(z,quadNext);
-						$$.headFALSE = EMPTYLIST();
-					} else{
-						$$.headFALSE = MAKELIST(z,quadNext);
-						$$.headTRUE = EMPTYLIST();
-					}
-					GENQUAD(OP_JUMP, x, y, z);
-						break;
-				}
+				case TYPE_BOOLEAN:
+					$$.value = $1.se->u.eConstant.value.vBoolean;
+					break;
 				case TYPE_CHAR:
 					$$.value = $1.se->u.eConstant.value.vChar;
 					break;
@@ -746,7 +644,8 @@ expr 	:"int_const"
 					printf("Unknown expression type\n");
 				}
 			}
-
+			else 
+				$$.se = $1.se;
 		}
 		|call
 		{
@@ -786,53 +685,70 @@ expr 	:"int_const"
 		}
 		| '+' expr
 		{
+			$$.calculated = $2.calculated;
 			if ($2.type == typeInteger ||
 				$2.type == typeReal ||
 				$2.type == typeChar) {
-				$$.type = $2.type;
-				$$.calculated = $2.calculated;
 				if ($2.type == typeChar)
 					$$.type = typeInteger;
-				if ($2.calculated) {
-					if ($2.type == typeChar || $2.type == typeInteger)
-						$$.value = $2.value;
-					else 
-						$$.floatval = $2.floatval;
-				}
-			} else yyerror("Type mismatch. numeric type expected \n");
+				else
+					$$.type = $2.type;
+			} else if ($2.type == typePointer(typeInteger) ||
+					$2.type->refType == typePointer(typeReal) ||
+					$2.type->refType == typePointer(typeChar)) {
+						if ($2.type == typePointer(typeChar))
+							$$.type = typeInteger;
+						else
+							$$.type = $2.type->refType;
+			} else yyerror("Type mismatch. Numeric type expected\n");
+			
+			if ($$.calculated) 
+				if ($$.type == typeReal)
+					$$.floatval = $2.floatval;
+				else 
+					$$.value = $2.value;
+			else {
+				/*Quadruples code*/
+				Vinfo a;
+				a.type = typeInteger;
+				a.value = 0;
+				a.calculated = 1;
+				intercode_arithmetic_op(&$$, &a, &$2, OP_PLUS);
+				/*End Quadruples code*/
+			}
 		}	%prec T_uplus
 		|'-' expr
 		{
+			$$.calculated = $2.calculated;
 			if ($2.type == typeInteger ||
 				$2.type == typeReal ||
 				$2.type == typeChar) {
 				$$.type = $2.type;
-				$$.calculated = $2.calculated;
 				if ($2.type == typeChar)
 					$$.type = typeInteger;
-				if ($2.calculated) {
-					if ($2.type == typeChar || $2.type == typeInteger)
-						$$.value = $2.value;
-					else
-						$$.floatval = $2.floatval;
-				}
+				else
+					$$.type = $2.type;
+
 			} else
 				yyerror("Type mismatch. numeric type expected \n");
-			/*Quadruples code*/
-			if (!$$.calculated) {
+			if ($$.calculated) 
+				if ($$.type == typeReal)
+					$$.floatval = $2.floatval;
+				else 
+					$$.value = $2.value;
+			else {
+				/*Quadruples code*/
 				Vinfo a;
 				a.type = typeInteger;
 				a.value = 0;
 				a.calculated = 1;
 				intercode_arithmetic_op(&$$, &a, &$2, OP_MINUS);
+				/*End Quadruples code*/
 			}
-			/*End Quadruples code*/
-
 		} 	%prec T_uminus
 		|expr '+' expr
 		{
 			compatible_arithmetic_OP($1.type, $3.type);
-
 			$$.calculated = $1.calculated && $3.calculated;
 			if ($$.calculated) {
 				switch ($1.type->kind) {
@@ -898,8 +814,8 @@ expr 	:"int_const"
 			}
 
 			/*Start Quadruples code*/
-			if (!$$.calculated);
-			intercode_arithmetic_op(&$$, &$1, &$3, OP_PLUS);
+			if (!$$.calculated)
+				intercode_arithmetic_op(&$$, &$1, &$3, OP_PLUS);
 			/*End Quadruples code*/
 		}
 		|expr '-' expr
@@ -972,7 +888,7 @@ expr 	:"int_const"
 
 
 			/*Start Quadruples code*/
-			if ( !$$.calculated);
+			if (!$$.calculated)
 			intercode_arithmetic_op(&$$, &$1, &$3, OP_MINUS);
 			/*End Quadruples code*/
 		}
@@ -1045,7 +961,7 @@ expr 	:"int_const"
 
 
 			/*Start Quadruples code*/
-			if (!$$.calculated);
+			if (!$$.calculated)
 			intercode_arithmetic_op(&$$, &$1, &$3, OP_bmul);
 			/*End Quadruples code*/
 		}
@@ -1123,7 +1039,7 @@ expr 	:"int_const"
 			}
 
 			/*Start Quadruples code*/
-			if (!$$.calculated);
+			if (!$$.calculated)
 			intercode_arithmetic_op(&$$, &$1, &$3, OP_bdiv);
 			/*End Quadruples code*/
 		}
@@ -1147,8 +1063,8 @@ expr 	:"int_const"
 
 
 			/*Start Quadruples code*/
-			if (!$$.calculated);
-			intercode_arithmetic_op(&$$, &$1, &$3, OP_bmod);
+			if (!$$.calculated)
+				intercode_arithmetic_op(&$$, &$1, &$3, OP_bmod);
 			/*End Quadruples code*/
 		}
 		|expr "MOD" expr
@@ -1171,8 +1087,8 @@ expr 	:"int_const"
 
 
 			/*Start Quadruples code*/
-			if ( !$$.calculated);
-			intercode_arithmetic_op(&$$, &$1, &$3, OP_bmod);
+			if ( !$$.calculated)
+				intercode_arithmetic_op(&$$, &$1, &$3, OP_bmod);
 			/*End Quadruples code*/
 		}
 		//Start relop
@@ -1746,7 +1662,6 @@ expr 	:"int_const"
 		;
 l_value		:"id"
 		{
-			//printf("ID = %s\n", se->id);
 			PushL(var_type, &l_value_stack);
 			PushSE(se, &se_stack);
 
@@ -1767,20 +1682,30 @@ l_value		:"id"
 				$<v>$.calculated = 1;
 			}
 			else yyerror("Strange error. Lvalue not variable or parameter or costant variable");
+			
+			/*We assume l_value is not array, if not we change that later*/
+			array = 0 ;
 		}
 		more_expr_br
 		{
-
 			$$.se = se;
 			$$.calculated = $<v>2.calculated;
+			/*array,a,b,c return a pointer to a[i] in c, 
+			 *otherwise we have no typePointer
+			 */
+			if (array) 
+				var_type = typePointer(var_type);
 			$$.type = var_type;
 			se = PopSE(&se_stack);
 			var_type = PopL(&l_value_stack);
 		}
 		;
-more_expr_br	:/*empty*/{}
+more_expr_br	:/*empty*/
+		{
+		}
 		|'['
 		{
+			array = 1;
 			if (var_type->kind == TYPE_ARRAY || var_type->kind == TYPE_IARRAY)
 				var_type = var_type->refType;
 			else yyerror("IndexError: No such element of array");
@@ -1791,24 +1716,25 @@ more_expr_br	:/*empty*/{}
 			quad *x = (quad *) new(sizeof(quad));
 			quad *y = (quad *) new(sizeof(quad));
 			quad *z = (quad *) new(sizeof(quad));
+
 			if ($<v>3.calculated == 1) {
 				y->type = QUAD_INTEGER;
 				y->value.intval = $<v>3.value;
 			}
 			else {
-				y->type = QUAD_SE;
+				if ($<v>3.type->kind == TYPE_POINTER)
+					y->type = QUAD_POINTER;
+				else 
+					y->type = QUAD_SE;
 				y->value.se = $<v>3.se;
 			}
 			x->type = QUAD_SE;
 			x->value.se = se;
-			printf("ID NOW IS : %s\n", se->id);
 			z->type = QUAD_SE;
-			z->value.se = newTemporary(typeInteger);
+			z->value.se = newTemporary(typePointer(var_type));
 			se = z->value.se;
 			GENQUAD(OP_ARRAY, x, y, z);
-
 			/*End Quadruples code*/
-
 		}
 		more_expr_br
 		;
@@ -1816,7 +1742,7 @@ call 	:"id" '('
 		{
 			Push(f_se, &top);
 			Push(current, &top);
-			f_se=lookupEntry($1, LOOKUP_ALL_SCOPES, false);
+			f_se = lookupEntry($1, LOOKUP_ALL_SCOPES, false);
 			if (f_se == NULL) {
 				yyerror("NameError. function/procedure is not defined ");
 			} else if (f_se->entryType != ENTRY_FUNCTION )
@@ -1954,11 +1880,13 @@ stmt		:';'
 		}
 		|l_value '=' expr ';'
 		{
+			printf("TYPES: %d %d\n", $1.type->kind , $3.type->kind);
 			compatible_assignment($1.type, $3.type);
 			/*Quadruples code*/
-			if ($3.type == TYPE_VOID) yyerror("Cannot get result of a void function");
+			if ($3.type == TYPE_VOID)
+				yyerror("Cannot get result of a void function");
 			intercode_assign_op(&$1, &$3);
-			$$= EMPTYLIST();
+			$$ = EMPTYLIST();
 			/*End Quadruples code*/
 
 		}
@@ -2139,7 +2067,8 @@ stmt		:';'
 
 			/*Quadruples code*/
 			Push_F(for_backQUAD, for_counter, &for_stack);
-			for_counter = newTemporary(typeInteger);
+			for_counter = se; 
+			//newTemporary(typeInteger);
 			/*End Quadruples code*/
 		}
 		',' expr
@@ -2179,6 +2108,7 @@ stmt		:';'
 			else if ($8 == _DOWN_TO)
 				GENQUAD(OP_MINUS, x, y, z);
 
+#ifdef CHECK_THIS_LATER
 			x = (quad *) new(sizeof(quad));
 			y = (quad *) new(sizeof(quad));
 			z = (quad *) new(sizeof(quad));
@@ -2189,7 +2119,7 @@ stmt		:';'
 			z->type = QUAD_SE;
 			z->value.se = se;
 			GENQUAD(OP_assign, x, y, z);
-
+#endif
 			x = (quad *) new(sizeof(quad));
 			y = (quad *) new(sizeof(quad));
 			z = (quad *) new(sizeof(quad));
@@ -2291,7 +2221,7 @@ stmt		:';'
 				else if ($2.type == typeBoolean) {
 					if ($2.type == typeBoolean)
 						se = conversion_from_condition_to_expression(&$2);
-					x->type = QUAD_TEMP;
+					x->type = QUAD_BOOL;
 					x->value.se = $2.se;
 				}
 				else if ($2.type == typeReal) {

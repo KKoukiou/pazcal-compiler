@@ -224,6 +224,7 @@ void compatible_assignment(Type type1, Type type2)
 			yyerror("Type mismatch. cannot assign a real to an integer ");
 			break;
 		case TYPE_INTEGER:
+			printf("HELLO\n");
 			break;
 		case TYPE_BOOLEAN:
 			yyerror("Type mismatch. cannot assign a boolean to an integer ");

@@ -12,6 +12,8 @@
 
 #include "parser.h"
 
+void hiterror (const char *msg);
+
 int NEXTQUAD(void)
 {
 	return quadNext;
@@ -185,7 +187,7 @@ void printQ(quad *q)
 		break;
 	case QUAD_POINTER:
 		printf(",[%s]", q->value.se->id);
-		break;
+		break;	
 	default:
 		printf("Unknown quad type");
 		break;
@@ -550,58 +552,79 @@ void intercode_relop(Vinfo *dd, Vinfo *d1, Vinfo *d3, oper op)
 
 void intercode_arithmetic_op(Vinfo *dd, Vinfo *d1, Vinfo *d3, oper op)
 {
-	if (dd->calculated == 0) {
-		quad *x = (quad *) new(sizeof(quad));
+	quad *x = (quad *) new(sizeof(quad));
 
-		if (d1->type->kind == TYPE_REAL && d1->calculated) {
-			x->type = QUAD_REAL;
-			x->value.floatval = d1->floatval;
-		} else if (d1->type->kind == TYPE_INTEGER && d1->calculated) {
-			x->type = QUAD_INTEGER;
-			x->value.intval = d1->value;
-		} else if (d1->type->kind == TYPE_CHAR && d1->calculated) {
-			x->type = QUAD_CHAR;
-			x->value.intval = d1->value;
-		} else{
+	if (d1->type->kind == TYPE_REAL && d1->calculated) {
+		x->type = QUAD_REAL;
+		x->value.floatval = d1->floatval;
+	} else if (d1->type->kind == TYPE_INTEGER && d1->calculated) {
+		x->type = QUAD_INTEGER;
+		x->value.intval = d1->value;
+	} else if (d1->type->kind == TYPE_CHAR && d1->calculated) {
+		x->type = QUAD_CHAR;
+		x->value.intval = d1->value;
+	} else{
+		if (d1->type->kind == TYPE_POINTER)
+			x->type = QUAD_POINTER;
+		else
 			x->type = QUAD_SE;
-			x->value.se = d1->se;
-		}
-		quad *y = (quad *) new(sizeof(quad));
-
-		if (d3->type->kind == TYPE_REAL && d3->calculated) {
-			y->type = QUAD_REAL;
-			y->value.floatval = d3->floatval;
-		} else if (d3->type->kind == TYPE_INTEGER && d3->calculated) {
-			y->type = QUAD_INTEGER;
-			y->value.intval = d3->value;
-		} else if (d3->type->kind == TYPE_CHAR && d3->calculated) {
-			y->type = QUAD_CHAR;
-			y->value.intval = d3->value;
-		} else {
-			y->type = QUAD_SE;
-			y->value.se = d3->se;
-		}
-		quad *z = (quad *) new(sizeof(quad));
-
-		z->type = QUAD_SE;
-		SymbolEntry *se = newTemporary(typeBoolean);
-
-		z->value.se = se;
-		dd->se = se;
-		GENQUAD(op, x, y, z);
+		x->value.se = d1->se;
 	}
+
+	quad *y = (quad *) new(sizeof(quad));
+
+	if (d3->type->kind == TYPE_REAL && d3->calculated) {
+		y->type = QUAD_REAL;
+		y->value.floatval = d3->floatval;
+	} else if (d3->type->kind == TYPE_INTEGER && d3->calculated) {
+		y->type = QUAD_INTEGER;
+		y->value.intval = d3->value;
+	} else if (d3->type->kind == TYPE_CHAR && d3->calculated) {
+		y->type = QUAD_CHAR;
+		y->value.intval = d3->value;
+	} else {
+		if (d3->type->kind == TYPE_POINTER)
+			y->type = QUAD_POINTER;
+		else 
+			y->type = QUAD_SE;
+		y->value.se = d3->se;
+	}
+	quad *z = (quad *) new(sizeof(quad));
+
+	z->type = QUAD_SE;
+	if (d1->type->kind == TYPE_REAL || d3->type->kind == TYPE_REAL) {
+		dd->type = typeReal;
+	}
+	else dd->type = typeInteger;
+
+	if ((d1->type == typePointer(typeReal)) ||
+		(d3->type == typePointer(typeReal))) {
+		dd->type = typeReal;
+	}
+	else dd->type = typeInteger;
+
+
+	SymbolEntry *se = newTemporary(dd->type);
+
+	z->value.se = se;
+	dd->se = se;
+	GENQUAD(op, x, y, z);
 }
 
 
 
 void intercode_assign_op(Vinfo *d1, Vinfo *d3)
 {
+	printf("TYPES: %d %d\n", d1->type->kind , d3->type->kind);
+	if (d1->se->entryType == ENTRY_CONSTANT)
+		hiterror("Cannot assign values to constant variables");	
+
 	quad *x = (quad *) new(sizeof(quad));
 	quad *y = (quad *) new(sizeof(quad));
 	quad *z = (quad *) new(sizeof(quad));
 	SymbolEntry *se;
 
-	if (d3->type == typeBoolean) {
+	/*if (d3->type == typeBoolean && !d3->calculated) {
 		printf("Conversion from cond to expr\n");
 		DisplayCList(&(d3->headTRUE));
 		se = newTemporary(typeBoolean);
@@ -643,11 +666,12 @@ void intercode_assign_op(Vinfo *d1, Vinfo *d3)
 		GENQUAD(OP_assign, x, y, z);
 
 	}
-
+	*/
 	x = (quad *) new(sizeof(quad));
 	y = (quad *) new(sizeof(quad));
 	z = (quad *) new(sizeof(quad));
-	
+
+	/* If is constant or const_expr*/
 	if (d3->calculated == 1) {
 		switch (d3->type->kind) {
 		case TYPE_REAL:
@@ -655,26 +679,15 @@ void intercode_assign_op(Vinfo *d1, Vinfo *d3)
 			x->value.floatval = d3->floatval;
 			break;
 		case TYPE_INTEGER:
-			if (d1->type->kind == TYPE_INTEGER) {
-				x->type = QUAD_INTEGER;
-				x->value.intval = d3->value;
-			} else if (d1->type->kind == TYPE_REAL) {
-				x->type = QUAD_REAL;
-				x->value.floatval = (long double)(d3->value);
-			} else if (d1->type->kind == TYPE_CHAR) {
-				x->type = QUAD_CHAR;
-				x->value.intval = (int) (d3->value & 0xFF);
-			}
+			x->type = QUAD_INTEGER;
+			x->value.intval = d3->value;
 			break;
 		case TYPE_BOOLEAN:
-			x->type = QUAD_SE;
-			x->value.se = se;
+			x->type = QUAD_BOOL;
+			x->value.intval = d3->value;
 			break;
 		case TYPE_CHAR:
-			if (d1->type->kind == TYPE_CHAR)
-				x->type = QUAD_CHAR;
-			else if (d1->type->kind == TYPE_INTEGER)
-				x->type = QUAD_INTEGER;
+			x->type = QUAD_CHAR;
 			x->value.intval = d3->value;
 			break;
 		case TYPE_ARRAY:
@@ -684,21 +697,24 @@ void intercode_assign_op(Vinfo *d1, Vinfo *d3)
 			}
 			break;
 		default:
-			printf("Unknown expression type\n");
+			printf("Unknown constant expression type\n");
 		}
-	} else if (d3->type->kind == TYPE_POINTER) {
-		x->type = QUAD_POINTER;
-		x->value.se = d3->se;
-	} else{
-		x->type = QUAD_SE;
-		if (d3->type != typeBoolean)
-			x->value.se = d3->se;
-		else
+	} else {
+		if (d3->type->kind == TYPE_POINTER)	
+			x->type = QUAD_POINTER;
+		else 
+			x->type = QUAD_SE;
+		if (d3->type == typeBoolean)
 			x->value.se = se;
+		else
+			x->value.se = d3->se;
 	}
 
 	y->type = QUAD_EMPTY;
-	z->type = QUAD_SE;
+	if (d1->type->kind == TYPE_POINTER)	
+			z->type = QUAD_POINTER;
+		else 
+			z->type = QUAD_SE;
 	z->value.se = d1->se;
 
 	GENQUAD(OP_assign, x, y, z);
@@ -865,4 +881,11 @@ SymbolEntry *conversion_from_condition_to_expression(Vinfo *d3)
 	GENQUAD(OP_assign, x, y, z);
 	return se;
 }
-/*********		END QUADRUPLES CODE GENERATION		   ***********/
+
+void ERROR (const char *fmt, ...);
+
+void hiterror (const char *msg)
+{
+	    ERROR("%s", msg);
+}
+
