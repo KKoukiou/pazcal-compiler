@@ -439,16 +439,16 @@ void DisplayWHILE(node_N **head)
 
 /*stack to support nested for loops*/
 
-void Push_F(int Item, SymbolEntry *se, node_F **top)
+void Push_F(int Item, SymbolEntry *se, SymbolEntry *iter, node_F **top)
 {
 	node_F *New;
-	node_F *get_node_F(int, SymbolEntry *);
-	New = get_node_F(Item, se);
+	node_F *get_node_F(int, SymbolEntry *, SymbolEntry *);
+	New = get_node_F(Item, se, iter);
 	New->next = *top;
 	*top = New;
 }
 
-node_F *get_node_F(int item, SymbolEntry *se)
+node_F *get_node_F(int item, SymbolEntry *se, SymbolEntry *iter)
 {
 	node_F *temp;
 	temp = (node_F *) malloc(sizeof(node_F));
@@ -456,6 +456,7 @@ node_F *get_node_F(int item, SymbolEntry *se)
 	  printf("\nMemory Cannot be allocated");
 	temp->for_backQUAD = item;
 	temp->for_counter = se;
+	temp->for_se = iter;
 	temp->next = NULL;
 	return temp;
 }
@@ -550,6 +551,7 @@ void intercode_relop(Vinfo *dd, Vinfo *d1, Vinfo *d3, oper op)
 
 void intercode_arithmetic_op(Vinfo *dd, Vinfo *d1, Vinfo *d3, oper op)
 {
+
 	quad *x = (quad *) new(sizeof(quad));
 
 	if (d1->type->kind == TYPE_REAL && d1->calculated) {
@@ -597,11 +599,10 @@ void intercode_arithmetic_op(Vinfo *dd, Vinfo *d1, Vinfo *d3, oper op)
 		dd->type = typeReal;
 	else dd->type = typeInteger;
 
-
 	SymbolEntry *se = newTemporary(dd->type);
-
 	z->value.se = se;
 	dd->se = se;
+
 	GENQUAD(op, x, y, z);
 }
 
@@ -791,6 +792,64 @@ void intercode_PAR_op(SymbolEntry **current_, Vinfo *d1)
 	}
 		/*End Quadruples code*/
 }
+
+void intercode_arithmetic_op_givenRET(Vinfo *dd, Vinfo *d1, Vinfo *d3, oper op)
+{
+
+	quad *x = (quad *) new(sizeof(quad));
+
+	if (d1->type->kind == TYPE_REAL && d1->calculated) {
+		x->type = QUAD_REAL;
+		x->value.floatval = d1->floatval;
+	} else if (d1->type->kind == TYPE_INTEGER && d1->calculated) {
+		x->type = QUAD_INTEGER;
+		x->value.intval = d1->value;
+	} else if (d1->type->kind == TYPE_CHAR && d1->calculated) {
+		x->type = QUAD_CHAR;
+		x->value.intval = d1->value;
+	} else{
+		if (d1->type->kind == TYPE_POINTER)
+			x->type = QUAD_POINTER;
+		else
+			x->type = QUAD_SE;
+		x->value.se = d1->se;
+	}
+
+	quad *y = (quad *) new(sizeof(quad));
+
+	if (d3->type->kind == TYPE_REAL && d3->calculated) {
+		y->type = QUAD_REAL;
+		y->value.floatval = d3->floatval;
+	} else if (d3->type->kind == TYPE_INTEGER && d3->calculated) {
+		y->type = QUAD_INTEGER;
+		y->value.intval = d3->value;
+	} else if (d3->type->kind == TYPE_CHAR && d3->calculated) {
+		y->type = QUAD_CHAR;
+		y->value.intval = d3->value;
+	} else {
+		if (d3->type->kind == TYPE_POINTER)
+			y->type = QUAD_POINTER;
+		else 
+			y->type = QUAD_SE;
+		y->value.se = d3->se;
+	}
+	quad *z = (quad *) new(sizeof(quad));
+
+	z->type = QUAD_SE;
+	if (d1->type->kind == TYPE_REAL || d3->type->kind == TYPE_REAL) 
+		dd->type = typeReal;
+	else if ((d1->type == typePointer(typeReal)) ||
+		(d3->type == typePointer(typeReal))) 
+		dd->type = typeReal;
+	else dd->type = typeInteger;
+
+	z->value.se = dd->se;
+
+	GENQUAD(op, x, y, z);
+}
+
+
+
 
 SymbolEntry *conversion_from_condition_to_expression(Vinfo *d3)
 {

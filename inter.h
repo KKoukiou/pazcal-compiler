@@ -122,11 +122,12 @@ void DisplayWHILE(node_N **);
 typedef struct stackFORLOOP {
         SymbolEntry *for_counter;
         int for_backQUAD;
+		SymbolEntry *for_se;
 	struct stackFORLOOP *next;
 } node_F;
 
 
-void Push_F(int ,SymbolEntry *, node_F **);
+void Push_F(int ,SymbolEntry *, SymbolEntry *, node_F **);
 node_F Pop_F(node_F **);
 
 /*Maintype*/
@@ -164,3 +165,8 @@ SymbolEntry *conversion_from_condition_to_expression(Vinfo *d);
 
 /*συνάρτηση μετατροπης από expression σε condition*/
 void conversion_from_expression_to_condition(Vinfo *d0, Vinfo *d1);
+
+/*συνάρτηση δημιουργίας τετράδων με δοσμένο όρισμα επιστροφής (για το FOR) */
+void intercode_arithmetic_op_givenRET(Vinfo *dd, Vinfo *d1, Vinfo *d3, oper op);
+
+

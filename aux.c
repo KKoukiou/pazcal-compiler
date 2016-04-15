@@ -211,7 +211,6 @@ void compatible_assignment(Type type1, Type type2)
 			yyerror("Type mismatch. cannot assign a real to an integer ");
 			break;
 		case TYPE_INTEGER:
-			printf("HELLO\n");
 			break;
 		case TYPE_BOOLEAN:
 			yyerror("Type mismatch. cannot assign a boolean to an integer ");
@@ -298,34 +297,6 @@ void compatible_assignment(Type type1, Type type2)
 	}
 
 
-Type compatible_pm(Type type1, Type type2)
-{
-	if ((type1 == typeInteger || type1 == typeReal) && (type2 == typeInteger ||
-		type2 == typeReal))	{
-		switch (type1->kind) {
-		case TYPE_REAL:
-			return typeReal;
-		case TYPE_INTEGER:
-			switch (type2->kind) {
-			case TYPE_REAL:
-				return typeReal;
-			case TYPE_INTEGER:
-				return typeInteger;
-			default:
-				break;
-			}
-			break;
-		default:
-			break;
-		}
-
-		printSymbolTable();
-	} else
-		yyerror("Type mismatch.");
-	return NULL;
-}
-
-
 Type compatible_arithmetic_OP(Type type1, Type type2)
 {
 	switch (type1->kind) {
@@ -340,6 +311,8 @@ Type compatible_arithmetic_OP(Type type1, Type type2)
 			break;
 		case TYPE_CHAR:
 			return typeInteger;
+		case TYPE_POINTER:
+			return compatible_arithmetic_OP(type1, type2->refType);
 		default:
 			yyerror("Type mismatch. Invalid operands for arithmetic operation ");
 			break;
@@ -356,13 +329,15 @@ Type compatible_arithmetic_OP(Type type1, Type type2)
 			break;
 		case TYPE_CHAR:
 			return typeInteger;
+		case TYPE_POINTER:
+			return compatible_arithmetic_OP(type1, type2->refType);
 		default:
 			yyerror("Type mismatch. Invalid operands for arithmetic operation ");
 			break;
 		}
 		break;
 	case TYPE_BOOLEAN:
-			yyerror("Type mismatch. Invalid operands for arithmetic operation ");
+		yyerror("Type mismatch. Invalid operands for arithmetic operation ");
 		break;
 	case TYPE_CHAR:
 		switch (type2->kind) {
@@ -375,12 +350,15 @@ Type compatible_arithmetic_OP(Type type1, Type type2)
 			break;
 		case TYPE_CHAR:
 			return typeInteger;
+		case TYPE_POINTER:
+			return compatible_arithmetic_OP(type1, type2->refType);
 		default:
 			yyerror("Type mismatch. Invalid operands for arithmetic operation ");
 			break;
 		}
+		break;
 	case TYPE_POINTER:
-		compatible_arithmetic_OP(type1->refType, type2);
+		return compatible_arithmetic_OP(type1->refType, type2);
 	default:
 		yyerror("Type mismatch. Invalid operands for arithmetic operation ");
 		break;
@@ -401,6 +379,7 @@ typedef struct stack {
 	SymbolEntry *data;
 	Type dataL;
 	SymbolEntry *dataSE;
+	int flag;
 	struct stack *next;
 } node;
 
@@ -608,6 +587,50 @@ void DisplaySE(node **head)
 		 temp = temp->next;
 		}
 	}
-	//getch();
 }
 /***************	END						******************/
+
+
+
+/***************	ANOTHER STACK IMPLEMENTATION			******************/
+
+void PushArray(int , node **);
+int PopArray(node **);
+
+node *array_stack;
+
+void PushArray(int item, node **top)
+{
+	node *New;
+
+	node *get_nodeArray(int);
+	New = get_nodeArray(item);
+	New->next = *top;
+	*top = New;
+}
+
+node *get_nodeArray(int item)
+{
+	node *temp;
+	temp = (node *) malloc(sizeof(node));
+	if (temp == NULL)
+		printf("\nMemory Cannot be allocated");
+	temp->flag = item;
+	temp->next = NULL;
+	return temp;
+}
+
+int PopArray(node **top)
+{
+	int item;
+	node *temp;
+
+	item = (*top)->flag;
+	temp = *top;
+	*top = (*top)->next;
+	free(temp);
+	return item;
+}
+
+/***************	END						******************/
+

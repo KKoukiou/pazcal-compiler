@@ -132,7 +132,7 @@ condition *for_list;
 %type<headNEXT> block
 %type<headNEXT> inner_block
 %type<t> 		call
-%type<num> 		step
+%type<v> 		step
 %type<to> 		to
 %type<t> 		matrixD
 %type<headNEXT> local_def
@@ -1422,14 +1422,28 @@ expr 	:"int_const"
 			/*End Quadruples Code*/
 			}
 		}
-		//Start and or operations
+		/*Start and or operations*/
 		|T_not expr
 		{
 			$$.calculated = 0;
 			
+			if(!$2.calculated && $2.type == typePointer(typeBoolean)) { 	
+				quad *x = (quad *) new(sizeof(quad));
+				quad *y = (quad *) new(sizeof(quad));
+				quad *z = (quad *) new(sizeof(quad));
+				x->value.se = $2.se;
+				x->type = QUAD_POINTER;
+				y->type = QUAD_EMPTY;
+				z->type = QUAD_SE;
+				z->value.se = newTemporary(typeBoolean);
+				$2.se = z->value.se;
+				$2.type = typeBoolean;
+				GENQUAD(OP_assign, x, y, z);
+			}
+
 			if ($2.se != NULL)
 				conversion_from_expression_to_condition(&$2, &$2);
-
+					
 			if ($2.type == typeBoolean) {
 				$$.type = typeBoolean;
 				if ($2.calculated == 1 ) { //if const value
@@ -1448,6 +1462,20 @@ expr 	:"int_const"
 		|T_unot expr
 		{
 			$$.calculated = 0;
+			
+			if (!$2.calculated && $2.type->kind == TYPE_POINTER) { 	
+				quad *x = (quad *) new(sizeof(quad));
+				quad *y = (quad *) new(sizeof(quad));
+				quad *z = (quad *) new(sizeof(quad));
+				x->value.se = $2.se;
+				x->type = QUAD_POINTER;
+				y->type = QUAD_EMPTY;
+				z->type = QUAD_SE;
+				z->value.se = newTemporary(typeBoolean);
+				$2.se = z->value.se;
+				$2.type = $2.type->refType;
+				GENQUAD(OP_assign, x, y, z);
+			}
 
 			if ($2.se != NULL)
 				conversion_from_expression_to_condition(&$2, &$2);
@@ -1470,6 +1498,20 @@ expr 	:"int_const"
 		|expr T_and
 		{
 			$<v>$.calculated = 0;
+			
+			if (!$1.calculated && $1.type->kind == TYPE_POINTER) { 	
+				quad *x = (quad *) new(sizeof(quad));
+				quad *y = (quad *) new(sizeof(quad));
+				quad *z = (quad *) new(sizeof(quad));
+				x->value.se = $1.se;
+				x->type = QUAD_POINTER;
+				y->type = QUAD_EMPTY;
+				z->type = QUAD_SE;
+				z->value.se = newTemporary(typeBoolean);
+				$1.se = z->value.se;
+				$1.type = $1.type->refType;
+				GENQUAD(OP_assign, x, y, z);
+			}
 
 			if ($1.se != NULL || $1.calculated)
 				conversion_from_expression_to_condition(&$1, &$1);
@@ -1489,6 +1531,20 @@ expr 	:"int_const"
 		}
 		expr
 		{
+			if (!$4.calculated && $4.type->kind == TYPE_POINTER) { 	
+				quad *x = (quad *) new(sizeof(quad));
+				quad *y = (quad *) new(sizeof(quad));
+				quad *z = (quad *) new(sizeof(quad));
+				x->value.se = $4.se;
+				x->type = QUAD_POINTER;
+				y->type = QUAD_EMPTY;
+				z->type = QUAD_SE;
+				z->value.se = newTemporary(typeBoolean);
+				$4.se = z->value.se;
+				$4.type = $4.type->refType;
+				GENQUAD(OP_assign, x, y, z);
+			}
+
 			if ($4.se != NULL || $1.calculated)
 				conversion_from_expression_to_condition(&$4, &$4);
 
@@ -1519,6 +1575,20 @@ expr 	:"int_const"
 		}
 		|expr T_or
 		{
+			if (!$1.calculated && $1.type->kind == TYPE_POINTER) { 	
+				quad *x = (quad *) new(sizeof(quad));
+				quad *y = (quad *) new(sizeof(quad));
+				quad *z = (quad *) new(sizeof(quad));
+				x->value.se = $1.se;
+				x->type = QUAD_POINTER;
+				y->type = QUAD_EMPTY;
+				z->type = QUAD_SE;
+				z->value.se = newTemporary(typeBoolean);
+				$1.se = z->value.se;
+				$1.type = $1.type->refType;
+				GENQUAD(OP_assign, x, y, z);
+			}
+
 			if ($1.se != NULL)
 				conversion_from_expression_to_condition(&$1, &$1);
 
@@ -1538,6 +1608,20 @@ expr 	:"int_const"
 		}
 		expr
 		{
+			if (!$4.calculated && $4.type->kind == TYPE_POINTER) { 	
+				quad *x = (quad *) new(sizeof(quad));
+				quad *y = (quad *) new(sizeof(quad));
+				quad *z = (quad *) new(sizeof(quad));
+				x->value.se = $4.se;
+				x->type = QUAD_POINTER;
+				y->type = QUAD_EMPTY;
+				z->type = QUAD_SE;
+				z->value.se = newTemporary(typeBoolean);
+				$4.se = z->value.se;
+				$4.type = $4.type->refType;
+				GENQUAD(OP_assign, x, y, z);
+			}
+
 			if ($4.se != NULL)
 				conversion_from_expression_to_condition(&$4, &$4);
 
@@ -1585,6 +1669,7 @@ l_value		:"id"
 		{
 			PushL(var_type, &l_value_stack);
 			PushSE(se, &se_stack);
+			PushArray(array, &array_stack);
 
 			se = lookupEntry($1, LOOKUP_ALL_SCOPES, false);
 			$<v>$.se = se;
@@ -1619,6 +1704,7 @@ l_value		:"id"
 			$$.type = var_type;
 			se = PopSE(&se_stack);
 			var_type = PopL(&l_value_stack);
+			array = PopArray(&array_stack);
 		}
 		;
 more_expr_br	:/*empty*/
@@ -1818,7 +1904,7 @@ stmt		:';'
 		}
 		|l_value "+=" expr ';'
 		{
-			compatible_assignment($1.type, compatible_pm($1.type, $3.type));
+			compatible_assignment($1.type, compatible_arithmetic_OP($1.type, $3.type));
 			/*Quadruples code*/
 			Vinfo v ;
 			intercode_arithmetic_op(&v, &$1, &$3, OP_PLUS);
@@ -1829,7 +1915,7 @@ stmt		:';'
 
 		|l_value "-=" expr ';'
 		{
-			compatible_assignment($1.type, compatible_pm($1.type, $3.type));
+			compatible_assignment($1.type, compatible_arithmetic_OP($1.type, $3.type));
 
 			/*Quadruples code*/
 			Vinfo v ;
@@ -1840,7 +1926,7 @@ stmt		:';'
 		}
 		|l_value "*=" expr ';'
 		{
-			compatible_assignment($1.type, compatible_pm($1.type, $3.type));
+			compatible_assignment($1.type, compatible_arithmetic_OP($1.type, $3.type));
 
 			/*Quadruples code*/
 			Vinfo v ;
@@ -1853,7 +1939,7 @@ stmt		:';'
 		{
 			if ($3.calculated == 1 && (($3.value == 0 && $3.type == typeInteger) || ($3.floatval == 0 && $3.type == typeReal)))
 				yyerror("ZeroDivisionError: integer division or modulo by zero.");
-			compatible_assignment($1.type, compatible_pm($1.type, $3.type));
+			compatible_assignment($1.type, compatible_arithmetic_OP($1.type, $3.type));
 
 			/*Quadruples code*/
 			Vinfo v ;
@@ -1866,7 +1952,7 @@ stmt		:';'
 		{
 			if ($3.calculated == 1 && $3.value == 0 && $3.type == typeInteger)
 				yyerror("ZeroDivisionError: integer division or modulo by zero.");
-			compatible_assignment($1.type, compatible_pm($1.type, $3.type));
+			compatible_assignment($1.type, compatible_arithmetic_OP($1.type, $3.type));
 
 			/*Quadruples code*/
 			Vinfo v ;
@@ -1947,6 +2033,7 @@ stmt		:';'
 		}
 		|"while"
 		{
+			/*FIX THIS, segfault caused by while loop*/
 			/*Quadruples code*/
 			Push_W(while_backQUAD, &while_stack);
 			while_backQUAD = quadNext;
@@ -1992,7 +2079,7 @@ stmt		:';'
 			}
 
 			/*Quadruples code*/
-			Push_F(for_backQUAD, for_counter, &for_stack);
+			Push_F(for_backQUAD, for_counter, se, &for_stack);
 			for_counter = newTemporary(typeInteger);
 			/*End Quadruples code*/
 		}
@@ -2000,6 +2087,8 @@ stmt		:';'
 		{
 
 		/*Quadruples code*/
+		/*Assign initial value to the for_counter and iterator*/
+		/*Starting point is not always a constant, FIX THIS*/
 		quad *x = (quad *) new(sizeof(quad));
 		quad *y = (quad *) new(sizeof(quad));
 		quad *z = (quad *) new(sizeof(quad));
@@ -2008,6 +2097,17 @@ stmt		:';'
 		x->type = QUAD_INTEGER;
 		x->value.intval = $6.value;
 		y->type = QUAD_EMPTY;
+		GENQUAD(OP_assign, x, y, z);
+			
+		x = (quad *) new(sizeof(quad));
+		y = (quad *) new(sizeof(quad));
+		z = (quad *) new(sizeof(quad));
+
+		x->type = QUAD_SE;
+		x->value.se = for_counter;
+		y->type = QUAD_EMPTY;
+		z->type = QUAD_SE;
+		z->value.se = se;
 		GENQUAD(OP_assign, x, y, z);
 		/*End Quadruples code*/
 		}
@@ -2035,7 +2135,7 @@ stmt		:';'
 			_BACKPATCH(&vv.headTRUE, quadNext);
 			$<headNEXT>$= vv.headFALSE;
 
-
+			/*i = $1*/
 			x = (quad *) new(sizeof(quad));
 			y = (quad *) new(sizeof(quad));
 			z = (quad *) new(sizeof(quad));
@@ -2046,6 +2146,29 @@ stmt		:';'
 			z->type = QUAD_SE;
 			z->value.se = se;
 			GENQUAD(OP_assign, x, y, z);
+			
+			/*add step*/
+			if ($8 == _TO) {
+				Vinfo x;
+				x.type = typeInteger;
+				x.se = for_counter;
+				x.calculated = 0;
+				
+				Vinfo z;
+				z.type = typeInteger;
+				z.se = for_counter;
+				z.calculated = 0;
+
+				intercode_arithmetic_op_givenRET(&x, &$10, &z, OP_PLUS);
+			}
+			else if ($8 == _DOWN_TO) {
+				Vinfo x;
+				x.type = typeInteger;
+				x.se = for_counter;
+				x.calculated = 0;
+				
+				intercode_arithmetic_op_givenRET(&x, &$10, &x, OP_MINUS);
+			}
 
 			/*End Quadruples code*/
 		}
@@ -2054,20 +2177,6 @@ stmt		:';'
 			quad *x = (quad *) new(sizeof(quad));
 			quad *y = (quad *) new(sizeof(quad));
 			quad *z = (quad *) new(sizeof(quad));
-
-
-			x->type = QUAD_SE;
-			x->value.se = for_counter;
-			y->type = QUAD_INTEGER;
-			y->value.intval = $10;
-			z->type = QUAD_SE;
-			z->value.se = for_counter;
-			if ($8 == _TO)
-				GENQUAD(OP_PLUS, x, y, z);
-			else if ($8 == _DOWN_TO)
-				GENQUAD(OP_MINUS, x, y, z);
-
-
 
 			/*Quadruples code*/
 			_BACKPATCH(&$13, for_backQUAD);
@@ -2084,6 +2193,7 @@ stmt		:';'
 			node_F f = Pop_F(&for_stack);
 			for_counter = f.for_counter;
 			for_backQUAD = f.for_backQUAD;
+			se = f.for_se;
 			/*End Quadruples code*/
 			
 			
@@ -2092,9 +2202,9 @@ stmt		:';'
 		|"do"
 		{
 			/*Quadruples code*/
-						Push_W(while_backQUAD, &while_stack);
-						while_backQUAD = quadNext;
-						/*End Quadruples code*/
+			Push_W(while_backQUAD, &while_stack);
+			while_backQUAD = quadNext;
+			/*End Quadruples code*/
 		}
 		stmt "while" '(' expr ')' ';'
 		{
@@ -2235,17 +2345,19 @@ to		:"TO"
 			$$= _DOWN_TO;
 		}
 		;
-step 		:"STEP" expr
+step 	:"STEP" expr
 		{
-			if (!equalType($2.type, typeInteger ))
+			if (!equalType($2.type, typeInteger))
 				yyerror("Type mismatch. Step must be of type integer");
-			if ($2.calculated == 0 || $2.value <= 0)
-				yyerror("Step mst be a calculated positive interger");
-			$$ = $2.value;
+			if ($2.calculated && $2.value <= 0)
+				yyerror("Step mst be a positive interger");
+			$$ = $2;
 		}
 		|/*empty step*/
 		{
-			$$ = 1;
+			$$.calculated = 1;
+			$$.value = 1;
+			$$.type = typeInteger;
 		}
 		;
 

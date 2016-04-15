@@ -109,10 +109,10 @@ C ([^'"\\\n]|\\.)
 {D}+(\.{D}+(e\-?{D}+)?) 	{yylval.real = strtold(yytext, NULL);return T_float_const;	}
 {L}({L}|{D}|_)* 		{yylval.n = strdup(yytext); return T_id;		}
 {D}+(\.{D}*(e\-?{D}+)?)? 	{return T_const;	}
-[ \t]+				{/*nothing*/		}
-[\n]				{lineno++;		}
+[ \t]+				{ /*nothing*/		}
+[\n]				{ lineno++;		}
 <<EOF>> 			{ return T_eof; 	}
-"//"				{/*nothing*/			}
+(\/\/[^\n]*)		{ /*nothing*/}
 "/*"		{BEGIN(COMMENT);	}
 <COMMENT>"*/"	{BEGIN(INITIAL);	}
 <COMMENT>\n	{lineno++;		}	
