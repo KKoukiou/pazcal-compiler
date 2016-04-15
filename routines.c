@@ -91,5 +91,5 @@ void define_routines(void)
 	newParameter("par2", typeInteger, PASS_BY_VALUE, se);
     endFunctionHeader(se, typeVoid);
 	closeScope();
-
 }
+

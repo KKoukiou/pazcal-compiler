@@ -162,4 +162,5 @@ void intercode_PAR_op(SymbolEntry ** current, Vinfo *d1);
 /*συνάρτηση μετατροπης από condition σε expression*/
 SymbolEntry *conversion_from_condition_to_expression(Vinfo *d);
 
-
+/*συνάρτηση μετατροπης από expression σε condition*/
+void conversion_from_expression_to_condition(Vinfo *d0, Vinfo *d1);

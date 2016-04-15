@@ -265,6 +265,7 @@ var_init	:"id" '=' expr
 			if (is_global && $5.calculated != 1)
 					yyerror("Global variable if initialized must be with an "
 							"evaluated expression");
+
 			/*Quadruples code*/
 			Vinfo a;
 			a.type = var_type;
@@ -333,7 +334,6 @@ more_arguments 	: /*empty*/
 		} formal
 		{
 			se = newParameter(formal_name, var_type, formal_mode, f);
-
 		}
 		more_arguments  	//right recursion :( :(
 		;
@@ -400,8 +400,8 @@ func		:"FUNC" type "id" '('
 			f = newFunction($3);
 			if (f == NULL)
 				yyerror("Dublicate identifier");
-			f->u.eFunction.resultType = functype;
 			openScope();
+			f->u.eFunction.resultType = functype;
 
 			/*Quadruples code*/
 			quad *x = (quad *) new(sizeof(quad));
@@ -436,7 +436,7 @@ routine 	:proc arguments ')' ';'
 		{
 			closeScope();
 			forwardFunction(f);
-			endFunctionHeader(f, functype );
+			endFunctionHeader(f, functype);
 
 			/*Quadruples code*/
 			quad *x = (quad *) new(sizeof(quad));
@@ -476,11 +476,10 @@ routine 	:proc arguments ')' ';'
 		}
 		block
 		{
-
 			is_global = 1;
 
 			closeScope();
-			endFunctionHeader(f, functype );
+			endFunctionHeader(f, functype);
 
 			/*Quadruples code*/
 			quad *x = (quad *) new(sizeof(quad));
@@ -579,12 +578,16 @@ expr 	:"int_const"
 			$$.type = typeBoolean;
 			$$.value = 1;
 			$$.calculated = 1;
+			$$.headTRUE = EMPTYLIST();
+			$$.headFALSE = EMPTYLIST();
 		}
 		|"false"
 		{
 			$$.type = typeBoolean;
 			$$.value = 0;
 			$$.calculated = 1;
+			$$.headTRUE = EMPTYLIST();
+			$$.headFALSE = EMPTYLIST();
 		}
 		|'(' expr ')'
 		{
@@ -592,40 +595,11 @@ expr 	:"int_const"
 		}
 		|l_value
 		{
-			if ($1.se->entryType != ENTRY_CONSTANT)
-				$$.calculated = 0;
-			else 
+			if ($1.se->entryType == ENTRY_CONSTANT)
 				$$.calculated = 1;
-
+			else 
+				$$.calculated = 0;
 			$$.type = $1.type;
-
-			/*if ($$.type == typeBoolean && $$.calculated == 0) {
-				quad *x = (quad *) new(sizeof(quad));
-				quad *y = (quad *) new(sizeof(quad));
-				quad *z = (quad *) new(sizeof(quad));
-
-				x->type = QUAD_SE;
-				x->value.se = $1.se;
-				y->type = QUAD_EMPTY;
-				z->type = QUAD_TOFILL;
-
-				$$.headTRUE = MAKELIST(z, quadNext);
-				GENQUAD(OP_IFB, x, y, z);
-				DisplayCList(&$$.headTRUE);
-
-				x = (quad *) new(sizeof(quad));
-				y = (quad *) new(sizeof(quad));
-				z = (quad *) new(sizeof(quad));
-
-				x->type = QUAD_EMPTY;
-				y->type= QUAD_EMPTY;
-				z->type= QUAD_TOFILL;
-
-				$$.headFALSE = MAKELIST(z, quadNext);
-				GENQUAD(OP_JUMP, x, y, z);
-				DisplayCList(&$$.headFALSE);
-			}
-			*/
 			if ($1.se->entryType == ENTRY_CONSTANT) {
 				switch ($1.type->kind) {
 				case TYPE_REAL:
@@ -654,9 +628,6 @@ expr 	:"int_const"
 			$$.type = $1;
 
 			/*Quadruples code */
-			quad *x = (quad *) new(sizeof(quad));
-			x->type = QUAD_SE;
-			x->value.se = call_res;
 			if ($1 == typeBoolean) {
 				quad *x = (quad *) new(sizeof(quad));
 				quad *y = (quad *) new(sizeof(quad));
@@ -681,27 +652,14 @@ expr 	:"int_const"
 				$$.headFALSE = MAKELIST(z, quadNext);
 				GENQUAD(OP_JUMP, x, y, z);
 			}
+			/*End Quadruples code */
 			call_res = PopSE(&call_result_stack);
 		}
 		| '+' expr
 		{
+			$$.type = compatible_arithmetic_OP($2.type , typeInteger);
 			$$.calculated = $2.calculated;
-			if ($2.type == typeInteger ||
-				$2.type == typeReal ||
-				$2.type == typeChar) {
-				if ($2.type == typeChar)
-					$$.type = typeInteger;
-				else
-					$$.type = $2.type;
-			} else if ($2.type == typePointer(typeInteger) ||
-					$2.type->refType == typePointer(typeReal) ||
-					$2.type->refType == typePointer(typeChar)) {
-						if ($2.type == typePointer(typeChar))
-							$$.type = typeInteger;
-						else
-							$$.type = $2.type->refType;
-			} else yyerror("Type mismatch. Numeric type expected\n");
-			
+
 			if ($$.calculated) 
 				if ($$.type == typeReal)
 					$$.floatval = $2.floatval;
@@ -719,23 +677,14 @@ expr 	:"int_const"
 		}	%prec T_uplus
 		|'-' expr
 		{
+			$$.type = compatible_arithmetic_OP($2.type , typeInteger);
 			$$.calculated = $2.calculated;
-			if ($2.type == typeInteger ||
-				$2.type == typeReal ||
-				$2.type == typeChar) {
-				$$.type = $2.type;
-				if ($2.type == typeChar)
-					$$.type = typeInteger;
-				else
-					$$.type = $2.type;
 
-			} else
-				yyerror("Type mismatch. numeric type expected \n");
 			if ($$.calculated) 
 				if ($$.type == typeReal)
-					$$.floatval = $2.floatval;
+					$$.floatval = -$2.floatval;
 				else 
-					$$.value = $2.value;
+					$$.value = -$2.value;
 			else {
 				/*Quadruples code*/
 				Vinfo a;
@@ -750,6 +699,7 @@ expr 	:"int_const"
 		{
 			compatible_arithmetic_OP($1.type, $3.type);
 			$$.calculated = $1.calculated && $3.calculated;
+
 			if ($$.calculated) {
 				switch ($1.type->kind) {
 				case TYPE_REAL:
@@ -812,7 +762,6 @@ expr 	:"int_const"
 					break;
 				}
 			}
-
 			/*Start Quadruples code*/
 			if (!$$.calculated)
 				intercode_arithmetic_op(&$$, &$1, &$3, OP_PLUS);
@@ -1061,7 +1010,6 @@ expr 	:"int_const"
 			else yyerror("Type mismatch. expression must be of type Integer or"
 						 " Char ");
 
-
 			/*Start Quadruples code*/
 			if (!$$.calculated)
 				intercode_arithmetic_op(&$$, &$1, &$3, OP_bmod);
@@ -1085,7 +1033,6 @@ expr 	:"int_const"
 			else yyerror("Type mismatch. expression must be of type Integer or"
 						" Char");
 
-
 			/*Start Quadruples code*/
 			if ( !$$.calculated)
 				intercode_arithmetic_op(&$$, &$1, &$3, OP_bmod);
@@ -1094,261 +1041,266 @@ expr 	:"int_const"
 		//Start relop
 		|expr T_eq expr
 		{
-
 			compatible_arithmetic_OP($1.type, $3.type);
+
 			$$.type = typeBoolean;
 			$$.calculated = 0;
-			if (($1.calculated) && ($3.calculated)) {
-			$$.calculated = 1;
-			switch ($1.type->kind) {
-			case TYPE_REAL:
-				switch ($3.type->kind) {
-				case TYPE_REAL:
-					$$.value = ($1.floatval == $3.floatval);
-					break;
-				case TYPE_INTEGER:
-					$$.value = ($1.floatval == $3.value);
-					break;
-				case TYPE_CHAR:
-					$$.value = ($1.floatval == $3.value);
-					break;
-				default:
-					break;
-				}
-				break;
-			case TYPE_INTEGER:
-				switch ($3.type->kind) {
-				case TYPE_REAL:
-					$$.value = ($1.value == $3.floatval);
-					break;
-				case TYPE_INTEGER:
-					$$.value = ($1.value == $3.value);
-					break;
-				case TYPE_CHAR:
-					$$.value = ($1.value == $3.value);
-					break;
-				default:
-					break;
-				}
-				break;
-			case TYPE_CHAR:
-				switch ($3.type->kind) {
-				case TYPE_REAL:
-					$$.value = ($1.value == $3.floatval);
-					break;
-				case TYPE_INTEGER:
-					$$.value = ($1.value == $3.value);
-					break;
-				case TYPE_CHAR:
-					$$.value = ($1.value == $3.value);
-					break;
-				default:
-					break;
-				}
-				break;
-			default:
-				break;
-			}
-			}
 
-			/*Quadruples Code*/
-			intercode_relop(&$$, &$1, &$3, OP_eq);
-			/*End Quadruples Code*/
+			if (($1.calculated) && ($3.calculated)) {
+				$$.calculated = 1;
+				switch ($1.type->kind) {
+				case TYPE_REAL:
+					switch ($3.type->kind) {
+					case TYPE_REAL:
+						$$.value = ($1.floatval == $3.floatval);
+						break;
+					case TYPE_INTEGER:
+						$$.value = ($1.floatval == $3.value);
+						break;
+					case TYPE_CHAR:
+						$$.value = ($1.floatval == $3.value);
+						break;
+					default:
+						break;
+					}
+					break;
+				case TYPE_INTEGER:
+					switch ($3.type->kind) {
+					case TYPE_REAL:
+						$$.value = ($1.value == $3.floatval);
+						break;
+					case TYPE_INTEGER:
+						$$.value = ($1.value == $3.value);
+						break;
+					case TYPE_CHAR:
+						$$.value = ($1.value == $3.value);
+						break;
+					default:
+						break;
+					}
+					break;
+				case TYPE_CHAR:
+					switch ($3.type->kind) {
+					case TYPE_REAL:
+						$$.value = ($1.value == $3.floatval);
+						break;
+					case TYPE_INTEGER:
+						$$.value = ($1.value == $3.value);
+						break;
+					case TYPE_CHAR:
+						$$.value = ($1.value == $3.value);
+						break;
+					default:
+						break;
+					}
+					break;
+				default:
+					break;
+				}
+			} else {
+				/*Quadruples Code*/
+				intercode_relop(&$$, &$1, &$3, OP_eq);
+				/*End Quadruples Code*/
+			}
 		}
 		|expr  T_neq expr
 		{
-
 			compatible_arithmetic_OP($1.type, $3.type);
+
 			$$.type = typeBoolean;
 			$$.calculated = 0;
+
 			if (($1.calculated) && ($3.calculated)) {
-			$$.calculated = 1;
-			switch ($1.type->kind) {
-			case TYPE_REAL:
-				switch ($3.type->kind) {
+				$$.calculated = 1;
+				switch ($1.type->kind) {
 				case TYPE_REAL:
-					$$.value = ($1.floatval != $3.floatval);
+					switch ($3.type->kind) {
+					case TYPE_REAL:
+						$$.value = ($1.floatval != $3.floatval);
+						break;
+					case TYPE_INTEGER:
+						$$.value = ($1.floatval != $3.value);
+						break;
+					case TYPE_CHAR:
+						$$.value = ($1.floatval != $3.value);
+						break;
+					default:
+						break;
+					}
 					break;
 				case TYPE_INTEGER:
-					$$.value = ($1.floatval != $3.value);
+					switch ($3.type->kind) {
+					case TYPE_REAL:
+						$$.value = ($1.value != $3.floatval);
+						break;
+					case TYPE_INTEGER:
+						$$.value = ($1.value != $3.value);
+						break;
+					case TYPE_CHAR:
+						$$.value = ($1.value !=  $3.value);
+						break;
+					default:
+						break;
+					}
 					break;
 				case TYPE_CHAR:
-					$$.value = ($1.floatval != $3.value);
+					switch ($3.type->kind) {
+					case TYPE_REAL:
+						$$.value = ($1.value != $3.floatval);
+						break;
+					case TYPE_INTEGER:
+						$$.value = ($1.value != $3.value);
+						break;
+					case TYPE_CHAR:
+						$$.value = ($1.value !=  $3.value);
+						break;
+					default:
+						break;
+					}
 					break;
 				default:
 					break;
 				}
-				break;
-			case TYPE_INTEGER:
-				switch ($3.type->kind) {
-				case TYPE_REAL:
-					$$.value = ($1.value != $3.floatval);
-					break;
-				case TYPE_INTEGER:
-					$$.value = ($1.value != $3.value);
-					break;
-				case TYPE_CHAR:
-					$$.value = ($1.value !=  $3.value);
-					break;
-				default:
-					break;
-				}
-				break;
-			case TYPE_CHAR:
-				switch ($3.type->kind) {
-				case TYPE_REAL:
-					$$.value = ($1.value != $3.floatval);
-					break;
-				case TYPE_INTEGER:
-					$$.value = ($1.value != $3.value);
-					break;
-				case TYPE_CHAR:
-					$$.value = ($1.value !=  $3.value);
-					break;
-				default:
-					break;
-				}
-				break;
-			default:
-				break;
+			} else {
+				/*Quadruples Code*/
+				intercode_relop(&$$, &$1, &$3, OP_neq);
+				/*End Quadruples Code*/
 			}
-			}
-
-			/*Quadruples Code*/
-			intercode_relop(&$$, &$1, &$3, OP_neq);
-			/*End Quadruples Code*/
-
-
 		}
 		|expr T_greater expr
 		{
 			compatible_arithmetic_OP($1.type, $3.type);
+
 			$$.type = typeBoolean;
 			$$.calculated = 0;
+
 			if (($1.calculated) && ($3.calculated)) {
-			$$.calculated = 1;
-			switch ($1.type->kind) {
-			case TYPE_REAL:
-				switch ($3.type->kind) {
+				$$.calculated = 1;
+				switch ($1.type->kind) {
 				case TYPE_REAL:
-					$$.value = ($1.floatval > $3.floatval);
+					switch ($3.type->kind) {
+					case TYPE_REAL:
+						$$.value = ($1.floatval > $3.floatval);
+						break;
+					case TYPE_INTEGER:
+						$$.value = ($1.floatval > $3.value);
+						break;
+					case TYPE_CHAR:
+						$$.value = ($1.floatval > $3.value);
+						break;
+					default:
+						break;
+					}
 					break;
 				case TYPE_INTEGER:
-					$$.value = ($1.floatval > $3.value);
+					switch ($3.type->kind) {
+					case TYPE_REAL:
+						$$.value = ($1.value > $3.floatval);
+						break;
+					case TYPE_INTEGER:
+						$$.value = ($1.value > $3.value);
+						break;
+					case TYPE_CHAR:
+						$$.value = ($1.value > $3.value);
+						break;
+					default:
+						break;
+					}
 					break;
 				case TYPE_CHAR:
-					$$.value = ($1.floatval > $3.value);
+					switch ($3.type->kind) {
+					case TYPE_REAL:
+						$$.value = ($1.value > $3.floatval);
+						break;
+					case TYPE_INTEGER:
+						$$.value = ($1.value > $3.value);
+						break;
+					case TYPE_CHAR:
+						$$.value = ($1.value > $3.value);
+						break;
+					default:
+						break;
+					}
 					break;
 				default:
 					break;
 				}
-				break;
-			case TYPE_INTEGER:
-				switch ($3.type->kind) {
-				case TYPE_REAL:
-					$$.value = ($1.value > $3.floatval);
-					break;
-				case TYPE_INTEGER:
-					$$.value = ($1.value > $3.value);
-					break;
-				case TYPE_CHAR:
-					$$.value = ($1.value > $3.value);
-					break;
-				default:
-					break;
-				}
-				break;
-			case TYPE_CHAR:
-				switch ($3.type->kind) {
-				case TYPE_REAL:
-					$$.value = ($1.value > $3.floatval);
-					break;
-				case TYPE_INTEGER:
-					$$.value = ($1.value > $3.value);
-					break;
-				case TYPE_CHAR:
-					$$.value = ($1.value > $3.value);
-					break;
-				default:
-					break;
-				}
-				break;
-			default:
-				break;
+			} else {
+				/*Quadruples Code*/
+				intercode_relop(&$$, &$1, &$3, OP_greater);
+				/*End Quadruples Code*/
 			}
-			}
-
-			/*Quadruples Code*/
-			intercode_relop(&$$, &$1, &$3, OP_greater);
-			/*End Quadruples Code*/
-
 		}
 		|expr T_less expr
 		{
 			compatible_arithmetic_OP($1.type, $3.type);
+
 			$$.type = typeBoolean;
 			$$.calculated = 0;
-			if (($1.calculated) && ($3.calculated)) {
-			$$.calculated = 1;
-			switch ($1.type->kind) {
-			case TYPE_REAL:
-				switch ($3.type->kind) {
-				case TYPE_REAL:
-					$$.value = ($1.floatval < $3.floatval);
-					break;
-				case TYPE_INTEGER:
-					$$.value = ($1.floatval < $3.value);
-					break;
-				case TYPE_CHAR:
-					$$.value = ($1.floatval < $3.value);
-					break;
-				default:
-					break;
-				}
-				break;
-			case TYPE_INTEGER:
-				switch ($3.type->kind) {
-				case TYPE_REAL:
-					$$.value = ($1.value < $3.floatval);
-					break;
-				case TYPE_INTEGER:
-					$$.value = ($1.value < $3.value);
-					break;
-				case TYPE_CHAR:
-					$$.value = ($1.value < $3.value);
-					break;
-				default:
-					break;
-				}
-				break;
-			case TYPE_CHAR:
-				switch ($3.type->kind) {
-				case TYPE_REAL:
-					$$.value = ($1.value < $3.floatval);
-					break;
-				case TYPE_INTEGER:
-					$$.value = ($1.value < $3.value);
-					break;
-				case TYPE_CHAR:
-					$$.value = ($1.value < $3.value);
-					break;
-				default:
-					break;
-				}
-				break;
-			default:
-				break;
-			}
-			}
 
-			/*Quadruples Code*/
-			intercode_relop(&$$, &$1, &$3, OP_less);
-			/*End Quadruples Code*/
+			if (($1.calculated) && ($3.calculated)) {
+				$$.calculated = 1;
+				switch ($1.type->kind) {
+				case TYPE_REAL:
+					switch ($3.type->kind) {
+					case TYPE_REAL:
+						$$.value = ($1.floatval < $3.floatval);
+						break;
+					case TYPE_INTEGER:
+						$$.value = ($1.floatval < $3.value);
+						break;
+					case TYPE_CHAR:
+						$$.value = ($1.floatval < $3.value);
+						break;
+					default:
+						break;
+					}
+					break;
+				case TYPE_INTEGER:
+					switch ($3.type->kind) {
+					case TYPE_REAL:
+						$$.value = ($1.value < $3.floatval);
+						break;
+					case TYPE_INTEGER:
+						$$.value = ($1.value < $3.value);
+						break;
+					case TYPE_CHAR:
+						$$.value = ($1.value < $3.value);
+						break;
+					default:
+						break;
+					}
+					break;
+				case TYPE_CHAR:
+					switch ($3.type->kind) {
+					case TYPE_REAL:
+						$$.value = ($1.value < $3.floatval);
+						break;
+					case TYPE_INTEGER:
+						$$.value = ($1.value < $3.value);
+						break;
+					case TYPE_CHAR:
+						$$.value = ($1.value < $3.value);
+						break;
+					default:
+						break;
+					}
+					break;
+				default:
+					break;
+				}
+			} else {
+				/*Quadruples Code*/
+				intercode_relop(&$$, &$1, &$3, OP_less);
+				/*End Quadruples Code*/
+			}
 		}
 		|expr T_leq expr {
 			compatible_arithmetic_OP($1.type, $3.type);
+
 			$$.type = typeBoolean;
 			$$.calculated = 0;
+
 			if (($1.calculated) && ($3.calculated)) {
 			$$.calculated = 1;
 			switch ($1.type->kind) {
@@ -1400,19 +1352,19 @@ expr 	:"int_const"
 			default:
 				break;
 			}
-			}
-
+			} else {
 			/*Quadruples Code*/
 			intercode_relop(&$$, &$1, &$3, OP_leq);
 			/*End Quadruples Code*/
-
-
+			}
 		}
 		|expr  T_geq expr
 		{
 			compatible_arithmetic_OP($1.type, $3.type);
+
 			$$.type = typeBoolean;
 			$$.calculated = 0;
+
 			if (($1.calculated) && ($3.calculated)) {
 			$$.calculated = 1;
 			switch ($1.type->kind) {
@@ -1464,15 +1416,20 @@ expr 	:"int_const"
 			default:
 				break;
 			}
-			}
-
+			} else {
 			/*Quadruples Code*/
 			intercode_relop(&$$, &$1, &$3, OP_geq);
 			/*End Quadruples Code*/
+			}
 		}
 		//Start and or operations
 		|T_not expr
 		{
+			$$.calculated = 0;
+			
+			if ($2.se != NULL)
+				conversion_from_expression_to_condition(&$2, &$2);
+
 			if ($2.type == typeBoolean) {
 				$$.type = typeBoolean;
 				if ($2.calculated == 1 ) { //if const value
@@ -1490,6 +1447,11 @@ expr 	:"int_const"
 		}
 		|T_unot expr
 		{
+			$$.calculated = 0;
+
+			if ($2.se != NULL)
+				conversion_from_expression_to_condition(&$2, &$2);
+
 			if ($2.type == typeBoolean) {
 				$$.type = typeBoolean;
 				if ($2.calculated == 1 ) {//if const value
@@ -1505,14 +1467,18 @@ expr 	:"int_const"
 			/*End Quadruples Code*/
 		}
 
-		|expr  T_and
+		|expr T_and
 		{
 			$<v>$.calculated = 0;
+
+			if ($1.se != NULL || $1.calculated)
+				conversion_from_expression_to_condition(&$1, &$1);
+
 			if ($1.type == typeBoolean) {
-			if ($1.calculated == 1 && $1.value != 1) {
-				$<v>$.value = 0;
 				$<v>$.type = typeBoolean;
-				$<v>$.calculated = 1;
+				if ($1.calculated == 1 && $1.value == 0) {
+					$<v>$.value = 0;
+					$<v>$.calculated = 1;
 				}
 			}
 			else yyerror("Type mismatch. ");
@@ -1523,27 +1489,39 @@ expr 	:"int_const"
 		}
 		expr
 		{
-			if ($4.type == typeBoolean) {
-				$<v>3.type = typeBoolean;
-				if ($4.calculated == 1 && $4.value != 1 ) {
-					$<v>3.value = 0;
-					$<v>3.calculated = 1;
-				}
-				else if ($4.calculated == 1 && $4.value == 1 &&
-						$1.calculated == 1 && $1.value == 1 )
-					$<v>3.value = 1;
-					$<v>3.calculated = 1;
-			}
-			else yyerror("Type mismatch. ");
+			if ($4.se != NULL || $1.calculated)
+				conversion_from_expression_to_condition(&$4, &$4);
 
+			if (!($<v>3.calculated == 1 && $4.value == 0)){
+				if ($4.type == typeBoolean) {
+					if ($4.calculated == 1 && $4.value != 1 ) {
+						$$.value = 0;
+						$$.calculated = 1;
+					}
+					else if ($4.calculated == 1 && $4.value == 1 &&
+							$1.calculated == 1 && $1.value == 1 ){
+						$$.value = 1;
+						$$.calculated = 1;
+					}
+				}
+				else yyerror("Type mismatch. ");
+			}
 			/*Quadruples Code*/
 			$$.headTRUE = $4.headTRUE;
 			$$.headFALSE = MERGE(&$1.headFALSE, &$4.headFALSE);
+			printf("HEADTRUE\n");
 			DisplayCList(&$$.headTRUE);
+			printf("HEADFALSE\n");
+			DisplayCList(&$$.headFALSE);
 			/*End Quadruples Code*/
+
+			$$.calculated = $1.calculated && $4.calculated;
 		}
 		|expr T_or
 		{
+			if ($1.se != NULL)
+				conversion_from_expression_to_condition(&$1, &$1);
+
 			$<v>$.calculated = 0;
 			if ($1.type == typeBoolean) {
 				if ($1.calculated == 1 && $1.value == 1) {
@@ -1560,6 +1538,9 @@ expr 	:"int_const"
 		}
 		expr
 		{
+			if ($4.se != NULL)
+				conversion_from_expression_to_condition(&$4, &$4);
+
 			if ($4.type == typeBoolean) {
 				$$.type = typeBoolean;
 				if ($4.calculated == 1 && $4.value == 1) {
@@ -1579,85 +1560,25 @@ expr 	:"int_const"
 			$$.headFALSE = $4.headFALSE;
 			$$.headTRUE = MERGE(&$1.headTRUE, &$4.headTRUE);
 			/*End Quadruples Code*/
+
+			$$.calculated = $1.calculated && $4.calculated;
 		}
 		|expr  T_band
 		{
-			$<v>$.calculated = 0;
-			if ($1.type == typeBoolean) {
-			if ($1.calculated == 1 && $1.value != 1) {
-				$<v>$.value = 0;
-				$<v>$.type = typeBoolean;
-				$<v>$.calculated = 1;
-				break;
-				}
-			}
-			else yyerror("Type mismatch. ");
-
-			/*Quadruples Code*/
-			_BACKPATCH(&$1.headTRUE, quadNext);
-			/*End Quadruples Code*/
+			/*TODO*/
 		}
 		expr
 		{
-			if ($4.type == typeBoolean) {
-			$<v>3.type = typeBoolean;
-			if ($4.calculated == 1 && $4.value != 1 ) {
-				$<v>3.value = 0;
-				$<v>3.calculated = 1;
-				break;
-			}
-			else if ($4.calculated == 1 && $4.value == 1 &&
-					 $1.calculated == 1 && $1.value == 1)
-				$<v>3.value = 1;
-				$<v>3.calculated = 1;
-			}
-			else yyerror("Type mismatch. ");
-
-			/*Quadruples Code*/
-			$$.headTRUE = $4.headTRUE;
-			$$.headFALSE = MERGE(&$1.headFALSE, &$4.headFALSE);
-			DisplayCList(&$$.headTRUE);
-			/*End Quadruples Code*/
+			/*TODO*/
 		}
 
 		|expr  T_bor
 		{
-			$<v>$.calculated = 0;
-			if ($1.type == typeBoolean) {
-				if ($1.calculated == 1 && $1.value == 1) {
-					$<v>$.value = 1;
-					$<v>$.calculated = 1;
-					$<v>$.type = typeBoolean;
-					break;
-				}
-			}
-			else yyerror("Type mismatch. ");
-
-			/*Quadruples Code*/
-			_BACKPATCH(&$1.headFALSE, quadNext);
-			/*End Quadruples Code*/
+			/*TODO*/
 		}
 		expr
 		{
-			if ($4.type == typeBoolean) {
-				$<v>3.type = typeBoolean;
-				if ($4.calculated == 1 && $4.value == 1) {
-					$<v>3.value = 1;
-					$<v>3.calculated = 1;
-					break;
-				}
-				else if ($4.calculated == 1 && $4.value == 1 &&
-						 $1.calculated == 1 && $1.value == 1) {
-					$<v>3.value = 0;
-					$<v>3.calculated = 1;
-				}
-			}
-			else yyerror("Type mismatch. ");
-
-			/*Quadruples Code*/
-			$$.headTRUE = MERGE(&$1.headTRUE, &$4.headTRUE);
-			$$.headFALSE = $4.headFALSE;
-			/*End Quadruples Code*/
+			/*TODO*/
 		}
 		;
 l_value		:"id"
@@ -1799,7 +1720,7 @@ more_expr	: /*empty*/
 			if (current == NULL )
 				yyerror("More arguments than expected in redeclaration of function ");
 			if (current->u.eParameter.mode == PASS_BY_VALUE)
-				compatible_PASS_BY_VALUE(current->u.eParameter.type, $2.type);
+				compatible_assignment(current->u.eParameter.type, $2.type);
 			else if (current->u.eParameter.mode == PASS_BY_REFERENCE);
 				compatible_PASS_BY_REFERENCE(current->u.eParameter.type, $2.type);
 
@@ -1823,14 +1744,19 @@ args		:/*empty*/
 			if (current == NULL )
 				yyerror("More arguments than expected in redeclaration of function ");
 			if (current->u.eParameter.mode == PASS_BY_VALUE) {
-				compatible_PASS_BY_VALUE(current->u.eParameter.type, $1.type);
+				compatible_assignment(current->u.eParameter.type, $1.type);
 			}
 			else if (current->u.eParameter.mode == PASS_BY_REFERENCE) {
 				compatible_PASS_BY_REFERENCE(current->u.eParameter.type, $1.type);
 			}
 			/*Quadruples code*/
 			if ($1.type == typeBoolean) {
-				$1.se = conversion_from_condition_to_expression(&$1);
+				if (!$1.calculated) 
+					$1.se = conversion_from_condition_to_expression(&$1);
+				else {
+            		_BACKPATCH(&$1.headTRUE, quadNext);
+            		_BACKPATCH(&$1.headFALSE, quadNext);
+				}
 			}
 			intercode_PAR_op(&current, &$1);
 			/*End Quadruples code*/
@@ -1858,6 +1784,7 @@ inner_block	:/*empty*/
 		{
 			$<headNEXT>$ = $1;
 			_BACKPATCH(&$<headNEXT>$, quadNext);
+			printf("_BACKPATCH %d\n", quadNext);
 		}
 		inner_block
 		{
@@ -1880,7 +1807,6 @@ stmt		:';'
 		}
 		|l_value '=' expr ';'
 		{
-			printf("TYPES: %d %d\n", $1.type->kind , $3.type->kind);
 			compatible_assignment($1.type, $3.type);
 			/*Quadruples code*/
 			if ($3.type == TYPE_VOID)
@@ -1990,7 +1916,7 @@ stmt		:';'
 		|call ';'
 		{
 			/*Quadruples code*/
-			$$= EMPTYLIST();
+			$$ = EMPTYLIST();
 			/*End Quadruples code*/
 		}
 		|"if" '(' expr ')'
@@ -2067,8 +1993,7 @@ stmt		:';'
 
 			/*Quadruples code*/
 			Push_F(for_backQUAD, for_counter, &for_stack);
-			for_counter = se; 
-			//newTemporary(typeInteger);
+			for_counter = newTemporary(typeInteger);
 			/*End Quadruples code*/
 		}
 		',' expr
@@ -2081,7 +2006,7 @@ stmt		:';'
 		z->type = QUAD_SE;
 		z->value.se = for_counter;
 		x->type = QUAD_INTEGER;
-		x->value.intval = $6.value - 1;
+		x->value.intval = $6.value;
 		y->type = QUAD_EMPTY;
 		GENQUAD(OP_assign, x, y, z);
 		/*End Quadruples code*/
@@ -2097,33 +2022,6 @@ stmt		:';'
 			quad *y = (quad *) new(sizeof(quad));
 			quad *z = (quad *) new(sizeof(quad));
 
-			x->type = QUAD_SE;
-			x->value.se = for_counter;
-			y->type = QUAD_INTEGER;
-			y->value.intval = $10;
-			z->type = QUAD_SE;
-			z->value.se = for_counter;
-			if ($8 == _TO)
-				GENQUAD(OP_PLUS, x, y, z);
-			else if ($8 == _DOWN_TO)
-				GENQUAD(OP_MINUS, x, y, z);
-
-#ifdef CHECK_THIS_LATER
-			x = (quad *) new(sizeof(quad));
-			y = (quad *) new(sizeof(quad));
-			z = (quad *) new(sizeof(quad));
-
-			x->type = QUAD_SE;
-			x->value.se = for_counter;
-			y->type = QUAD_EMPTY;
-			z->type = QUAD_SE;
-			z->value.se = se;
-			GENQUAD(OP_assign, x, y, z);
-#endif
-			x = (quad *) new(sizeof(quad));
-			y = (quad *) new(sizeof(quad));
-			z = (quad *) new(sizeof(quad));
-
 			Vinfo v1;
 			Vinfo v2;
 			Vinfo vv;
@@ -2137,15 +2035,45 @@ stmt		:';'
 			_BACKPATCH(&vv.headTRUE, quadNext);
 			$<headNEXT>$= vv.headFALSE;
 
+
+			x = (quad *) new(sizeof(quad));
+			y = (quad *) new(sizeof(quad));
+			z = (quad *) new(sizeof(quad));
+
+			x->type = QUAD_SE;
+			x->value.se = for_counter;
+			y->type = QUAD_EMPTY;
+			z->type = QUAD_SE;
+			z->value.se = se;
+			GENQUAD(OP_assign, x, y, z);
+
 			/*End Quadruples code*/
 		}
 		')' stmt
 		{
-			/*Quadruples code*/
-			_BACKPATCH(&$13, for_backQUAD);
 			quad *x = (quad *) new(sizeof(quad));
 			quad *y = (quad *) new(sizeof(quad));
 			quad *z = (quad *) new(sizeof(quad));
+
+
+			x->type = QUAD_SE;
+			x->value.se = for_counter;
+			y->type = QUAD_INTEGER;
+			y->value.intval = $10;
+			z->type = QUAD_SE;
+			z->value.se = for_counter;
+			if ($8 == _TO)
+				GENQUAD(OP_PLUS, x, y, z);
+			else if ($8 == _DOWN_TO)
+				GENQUAD(OP_MINUS, x, y, z);
+
+
+
+			/*Quadruples code*/
+			_BACKPATCH(&$13, for_backQUAD);
+			x = (quad *) new(sizeof(quad));
+			y = (quad *) new(sizeof(quad));
+			z = (quad *) new(sizeof(quad));
 			x->type = QUAD_EMPTY;
 			y->type = QUAD_EMPTY;
 			z->type = QUAD_TAG;
@@ -2157,6 +2085,9 @@ stmt		:';'
 			for_counter = f.for_counter;
 			for_backQUAD = f.for_backQUAD;
 			/*End Quadruples code*/
+			
+			
+			/*TODO : Store back the for_counter to the iterator*/
 		}
 		|"do"
 		{

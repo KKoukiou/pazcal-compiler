@@ -196,45 +196,4 @@ loadAddr(R,a){
 		break;
 
 }
-/*
-			 switch (temp->x->type){
-				case QUAD_TOFILL:
-					printf(",*");
-					break;
-				case QUAD_SE:
-					printf("%s", temp->x->value.se->id);
-					break;
-				case QUAD_INTEGER:
-					printf(",%d", temp->x->value.intval);
-					break;
-				case QUAD_CHAR:
-					printf(",'%c'",(char) temp->x->value.intval);
-					break;
-				case QUAD_BOOL:
-					printf(",%d", temp->x->value.intval);
-					break;
-				case QUAD_REAL:
-					printf(",%Lf", temp->x->value.floatval);
-					break;
-				case QUAD_STR:
-					printf(",%s", temp->x->value.strval);
-					break;
-				case QUAD_EMPTY:
-					printf(",-");
-					break;
-				case QUAD_MODE:
-					if(temp->x->mode == PASS_BY_VALUE) printf(",V");
-					else if (temp->x->mode == PASS_BY_REFERENCE) printf(",R");
-					else if(temp->x->mode == RET) printf(",RET");
-					break;
-				case QUAD_TAG:
-					printf(",%d",temp->x->value.intval);
-					break;
-				case QUAD_POINTER:
-					printf(",[%s]",temp->x->value.se->id);
-					break;
-				default:
-					printf("Unknown quad type");
-					break;
-				}
-*/
+

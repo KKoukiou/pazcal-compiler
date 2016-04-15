@@ -501,8 +501,11 @@ void intercode_relop(Vinfo *dd, Vinfo *d1, Vinfo *d3, oper op)
 		default:
 			break;
 		}
-	else{
-		x->type = QUAD_SE;
+	else {
+		if (d1->type->kind == TYPE_POINTER)
+			x->type = QUAD_POINTER;
+		else 
+			x->type = QUAD_SE;
 		x->value.se = d1->se;
 	}
 
@@ -524,20 +527,17 @@ void intercode_relop(Vinfo *dd, Vinfo *d1, Vinfo *d3, oper op)
 			break;
 		}
 	else {
-		y->type = QUAD_SE;
+		if (d3->type->kind == TYPE_POINTER)
+			y->type = QUAD_POINTER;
+		else 
+			y->type = QUAD_SE;
 		y->value.se = d3->se;
 	}
 
-	if (!d1->calculated || !d3->calculated) {
-		z->type = QUAD_TOFILL;
-		GENQUAD(op, x, y, z);
-	} else {
-		x->type = QUAD_EMPTY;
-		y->type = QUAD_EMPTY;
-		z->type = QUAD_TOFILL;
-		if (dd->value ==  1)
-			GENQUAD(OP_JUMP, x, y, z);
-	}
+
+	z->type = QUAD_TOFILL;
+	GENQUAD(op, x, y, z);
+
 	x = (quad *) new(sizeof(quad));
 	y = (quad *) new(sizeof(quad));
 	z = (quad *) new(sizeof(quad));
@@ -546,8 +546,6 @@ void intercode_relop(Vinfo *dd, Vinfo *d1, Vinfo *d3, oper op)
 	y->type = QUAD_EMPTY;
 	z->type = QUAD_TOFILL;
 	GENQUAD(OP_JUMP, x, y, z);
-
-
 }
 
 void intercode_arithmetic_op(Vinfo *dd, Vinfo *d1, Vinfo *d3, oper op)
@@ -592,15 +590,11 @@ void intercode_arithmetic_op(Vinfo *dd, Vinfo *d1, Vinfo *d3, oper op)
 	quad *z = (quad *) new(sizeof(quad));
 
 	z->type = QUAD_SE;
-	if (d1->type->kind == TYPE_REAL || d3->type->kind == TYPE_REAL) {
+	if (d1->type->kind == TYPE_REAL || d3->type->kind == TYPE_REAL) 
 		dd->type = typeReal;
-	}
-	else dd->type = typeInteger;
-
-	if ((d1->type == typePointer(typeReal)) ||
-		(d3->type == typePointer(typeReal))) {
+	else if ((d1->type == typePointer(typeReal)) ||
+		(d3->type == typePointer(typeReal))) 
 		dd->type = typeReal;
-	}
 	else dd->type = typeInteger;
 
 
@@ -615,7 +609,6 @@ void intercode_arithmetic_op(Vinfo *dd, Vinfo *d1, Vinfo *d3, oper op)
 
 void intercode_assign_op(Vinfo *d1, Vinfo *d3)
 {
-	printf("TYPES: %d %d\n", d1->type->kind , d3->type->kind);
 	if (d1->se->entryType == ENTRY_CONSTANT)
 		hiterror("Cannot assign values to constant variables");	
 
@@ -623,50 +616,16 @@ void intercode_assign_op(Vinfo *d1, Vinfo *d3)
 	quad *y = (quad *) new(sizeof(quad));
 	quad *z = (quad *) new(sizeof(quad));
 	SymbolEntry *se;
-
-	/*if (d3->type == typeBoolean && !d3->calculated) {
-		printf("Conversion from cond to expr\n");
-		DisplayCList(&(d3->headTRUE));
-		se = newTemporary(typeBoolean);
-
-		_BACKPATCH(&d3->headTRUE, quadNext);
-		x = (quad *) new(sizeof(quad));
-		y = (quad *) new(sizeof(quad));
-		z = (quad *) new(sizeof(quad));
-
-		x->type = QUAD_INTEGER;
-		x->value.intval = 1;
-		y->type = QUAD_EMPTY;
-		z->type = QUAD_SE;
-		z->value.se = se;
-
-		GENQUAD(OP_assign, x, y, z);
-
-		x = (quad *) new(sizeof(quad));
-		y = (quad *) new(sizeof(quad));
-		z = (quad *) new(sizeof(quad));
-
-		x->type = QUAD_EMPTY;
-		y->type = QUAD_EMPTY;
-		z->type = QUAD_TAG;
-		z->value.intval = quadNext+2;
-
-		GENQUAD(OP_JUMP, x, y, z);
-
-		_BACKPATCH(&d3->headFALSE, quadNext);
-
-		x = (quad *) new(sizeof(quad));
-		y = (quad *) new(sizeof(quad));
-		z = (quad *) new(sizeof(quad));
-		x->type = QUAD_INTEGER;
-		x->value.intval = 0;
-		y->type = QUAD_EMPTY;
-		z->type = QUAD_SE;
-		z->value.se = se;
-		GENQUAD(OP_assign, x, y, z);
-
+	
+	if (d3->type == typeBoolean) {
+		if (!d3->calculated) 
+			se = conversion_from_condition_to_expression(d3);
+		else {
+		   	_BACKPATCH(&d3->headTRUE, quadNext);
+			_BACKPATCH(&d3->headFALSE, quadNext);
+		}
 	}
-	*/
+
 	x = (quad *) new(sizeof(quad));
 	y = (quad *) new(sizeof(quad));
 	z = (quad *) new(sizeof(quad));
@@ -831,9 +790,6 @@ void intercode_PAR_op(SymbolEntry **current_, Vinfo *d1)
 		GENQUAD(OP_PAR, x, y, z);
 	}
 		/*End Quadruples code*/
-
-
-
 }
 
 SymbolEntry *conversion_from_condition_to_expression(Vinfo *d3)
@@ -843,17 +799,15 @@ SymbolEntry *conversion_from_condition_to_expression(Vinfo *d3)
 	SymbolEntry *se = newTemporary(typeBoolean);
 
 	_BACKPATCH(&d3->headTRUE, quadNext);
-	//printf("BACKPATCH TRUE to %d\n", quadNext);
 	quad *x = (quad *) new(sizeof(quad));
 	quad *y = (quad *) new(sizeof(quad));
 	quad *z = (quad *) new(sizeof(quad));
 
-	x->type = QUAD_INTEGER;
+	x->type = QUAD_BOOL;
 	x->value.intval = 1;
 	y->type = QUAD_EMPTY;
 	z->type = QUAD_SE;
 	z->value.se = se;
-
 	GENQUAD(OP_assign, x, y, z);
 
 	x = (quad *) new(sizeof(quad));
@@ -864,22 +818,77 @@ SymbolEntry *conversion_from_condition_to_expression(Vinfo *d3)
 	y->type = QUAD_EMPTY;
 	z->type = QUAD_TAG;
 	z->value.intval = quadNext + 2;
-
 	GENQUAD(OP_JUMP, x, y, z);
 
 	_BACKPATCH(&d3->headFALSE, quadNext);
 
-	//printf("BACKPATCH false to %d\n", quadNext);
 	x = (quad *) new(sizeof(quad));
 	y = (quad *) new(sizeof(quad));
 	z = (quad *) new(sizeof(quad));
-	x->type = QUAD_INTEGER;
+	x->type = QUAD_BOOL;
 	x->value.intval = 0;
 	y->type = QUAD_EMPTY;
 	z->type = QUAD_SE;
 	z->value.se = se;
 	GENQUAD(OP_assign, x, y, z);
+
 	return se;
+}
+
+void conversion_from_expression_to_condition(Vinfo *d0, Vinfo *d1)
+{
+	printf("Conversion from expr to cond\n");
+	quad *x ;
+	quad *y ;
+	quad *z ;
+
+	if (d1->calculated) {
+			/*Quadruples code*/
+			x = (quad *) new(sizeof(quad));
+			y = (quad *) new(sizeof(quad));
+			z = (quad *) new(sizeof(quad));
+			
+			x->type = QUAD_EMPTY;
+			y->type= QUAD_EMPTY;
+			z->type= QUAD_TOFILL;
+			
+			if (d1->value == 1) {	
+				d0->headTRUE = MAKELIST(z,quadNext);
+				d0->headFALSE = EMPTYLIST();	
+			} else {
+				d0->headFALSE = MAKELIST(z,quadNext);
+				d0->headTRUE = EMPTYLIST();	
+			}
+			GENQUAD(OP_JUMP,x,y,z);
+			/*End Quadruples code*/	
+	} else {
+		x = (quad *) new(sizeof(quad));
+		y = (quad *) new(sizeof(quad));		
+		z = (quad *) new(sizeof(quad));
+			
+		x->type = QUAD_SE;
+		x->value.se = d1->se;
+		y->type = QUAD_EMPTY;
+		z->type = QUAD_TOFILL;
+
+		d0->headTRUE = MAKELIST(z, quadNext);
+		GENQUAD(OP_IFB, x, y, z);
+		DisplayCList(&d0->headTRUE);
+
+		x = (quad *) new(sizeof(quad));
+		y = (quad *) new(sizeof(quad));
+		z = (quad *) new(sizeof(quad));
+
+		x->type = QUAD_EMPTY;
+		y->type= QUAD_EMPTY;
+		z->type= QUAD_TOFILL;
+
+		d0->headFALSE = MAKELIST(z, quadNext);
+		GENQUAD(OP_JUMP, x, y, z);
+		DisplayCList(&d0->headFALSE);	
+	}
+
+	return;
 }
 
 void ERROR (const char *fmt, ...);

@@ -69,7 +69,6 @@ void compatible_PASS_BY_REFERENCE(Type type1, Type type2)
 {
 	switch (type1->kind) {
 	case TYPE_INTEGER:
-
 		switch (type2->kind) {
 		case TYPE_REAL:
 			yyerror("Parameter mismatch in redeclaration.");
@@ -80,13 +79,15 @@ void compatible_PASS_BY_REFERENCE(Type type1, Type type2)
 			yyerror("Parameter mismatch in redeclaration.");
 			break;
 		case TYPE_CHAR:
-			yyerror("Parameter mismatch in redeclaration.");
 			break;
 		case TYPE_ARRAY:
 			yyerror("Parameter mismatch in redeclaration.");
 			break;
 		case TYPE_IARRAY:
 			yyerror("Parameter mismatch in redeclaration.");
+			break;
+		case TYPE_POINTER:
+			compatible_PASS_BY_REFERENCE(type1, type2->refType);
 			break;
 		default:
 			break;
@@ -97,19 +98,20 @@ void compatible_PASS_BY_REFERENCE(Type type1, Type type2)
 		case TYPE_REAL:
 			break;
 		case TYPE_INTEGER:
-			yyerror("Parameter mismatch in redeclaration.");
 			break;
 		case TYPE_BOOLEAN:
 			yyerror("Parameter mismatch in redeclaration.");
 			break;
 		case TYPE_CHAR:
-			yyerror("Parameter mismatch in redeclaration. ");
 			break;
 		case TYPE_ARRAY:
 			yyerror("Parameter mismatch in redeclaration. ");
 			break;
 		case TYPE_IARRAY:
 			yyerror("Parameter mismatch in redeclaration. ");
+			break;
+		case TYPE_POINTER:
+			compatible_PASS_BY_REFERENCE(type1, type2->refType);
 			break;
 		default:
 			break;
@@ -134,6 +136,9 @@ void compatible_PASS_BY_REFERENCE(Type type1, Type type2)
 		case TYPE_IARRAY:
 			yyerror("Parameter mismatch in redeclaration.");
 			break;
+		case TYPE_POINTER:
+			compatible_PASS_BY_REFERENCE(type1, type2->refType);
+			break;
 		default:
 			break;
 		}
@@ -144,7 +149,6 @@ void compatible_PASS_BY_REFERENCE(Type type1, Type type2)
 			yyerror("Parameter mismatch in redeclaration.");
 			break;
 		case TYPE_INTEGER:
-			yyerror("Parameter mismatch in redeclaration.");
 			break;
 		case TYPE_BOOLEAN:
 			yyerror("Parameter mismatch in redeclaration.");
@@ -156,6 +160,9 @@ void compatible_PASS_BY_REFERENCE(Type type1, Type type2)
 			break;
 		case TYPE_IARRAY:
 			yyerror("Parameter mismatch in redeclaration.");
+			break;
+		case TYPE_POINTER:
+			compatible_PASS_BY_REFERENCE(type1, type2->refType);
 			break;
 		default:
 			break;
@@ -176,33 +183,13 @@ void compatible_PASS_BY_REFERENCE(Type type1, Type type2)
 			yyerror("Parameter mismatch in redeclaration.");
 			break;
 		case TYPE_ARRAY:
+			compatible_PASS_BY_REFERENCE(type1->refType, type2->refType);
 			break;
 		case TYPE_IARRAY:
 			yyerror("Parameter mismatch in redeclaration.");
 			break;
-		default:
-			break;
-		}
-		break;
-	case TYPE_IARRAY:
-		switch (type2->kind) {
-		case TYPE_REAL:
-			yyerror("Parameter mismatch in redeclaration.");
-			break;
-		case TYPE_INTEGER:
-			yyerror("Parameter mismatch in redeclaration.");
-			break;
-		case TYPE_BOOLEAN:
-			yyerror("Parameter mismatch in redeclaration.");
-			break;
-		case TYPE_CHAR:
-			yyerror("Parameter mismatch in redeclaration.");
-			break;
-		case TYPE_ARRAY:
-			if (type1->refType != type2->refType)
-				yyerror("Parameter mismatch in redeclaration.");
-			break;
-		case TYPE_IARRAY:
+		case TYPE_POINTER:
+			compatible_PASS_BY_REFERENCE(type1, type2->refType);
 			break;
 		default:
 			break;
@@ -311,86 +298,6 @@ void compatible_assignment(Type type1, Type type2)
 	}
 
 
-void compatible_PASS_BY_VALUE(Type type1, Type type2)
-{
-	switch (type1->kind) {
-	case TYPE_INTEGER:
-		switch (type2->kind) {
-		case TYPE_REAL:
-			yyerror("Parameter mismatch in redeclaration. cannot assign a real to an integer ");
-			break;
-		case TYPE_INTEGER:
-			break;
-		case TYPE_BOOLEAN:
-			yyerror("Parameter mismatch in redeclaration. cannot assign a boolean to an integer ");
-			break;
-		case TYPE_CHAR:
-			break;
-		default:
-			yyerror("Parameter mismatch in redeclaration. cannot assign table to an integer");
-			break;
-		}
-		break;
-	case TYPE_REAL:
-		switch (type2->kind) {
-		case TYPE_REAL:
-			break;
-		case TYPE_INTEGER:
-			break;
-		case TYPE_BOOLEAN:
-			yyerror("Parameter mismatch in redeclaration. cannot assign a boolean to a real ");
-			break;
-		case TYPE_CHAR:
-			yyerror("Parameter mismatch in redeclaration. cannot assign a char to a real ");
-			break;
-		default:
-			yyerror("Parameter mismatch in redeclaration. cannot assign table to a real");
-			break;
-		}
-		break;
-	case TYPE_BOOLEAN:
-		switch (type2->kind) {
-		case TYPE_REAL:
-			yyerror("Parameter mismatch in redeclaration. cannot assign a real to a boolean ");
-			break;
-		case TYPE_INTEGER:
-			yyerror("Parameter mismatch in redeclaration. cannot assign an integer to a boolean ");
-			break;
-		case TYPE_BOOLEAN:
-			break;
-		case TYPE_CHAR:
-			yyerror("Parameter mismatch in redeclaration. cannot assign a char to a boolean ");
-			break;
-		default:
-			yyerror("Parameter mismatch in redeclaration. cannot assign a table to a boolean ");
-			break;
-		}
-		break;
-	case TYPE_CHAR:
-		switch (type2->kind) {
-		case TYPE_REAL:
-			yyerror("Parameter mismatch in redeclaration. cannot assign a real to a char ");
-			break;
-		case TYPE_INTEGER:
-			break;
-		case TYPE_BOOLEAN:
-			yyerror("Parameter mismatch in redeclaration. cannot assign a boolean to a char ");
-			break;
-		case TYPE_CHAR:
-			break;
-		default:
-			yyerror("Parameter mismatch in redeclaration. cannto assign a table to a char ");
-			break;
-		}
-		break;
-
-	default:
-		yyerror("Parameter mismatch in redeclaration. while procecing table assignment");
-		break;
-	}
-
-	}
-
 Type compatible_pm(Type type1, Type type2)
 {
 	if ((type1 == typeInteger || type1 == typeReal) && (type2 == typeInteger ||
@@ -472,11 +379,12 @@ Type compatible_arithmetic_OP(Type type1, Type type2)
 			yyerror("Type mismatch. Invalid operands for arithmetic operation ");
 			break;
 		}
+	case TYPE_POINTER:
+		compatible_arithmetic_OP(type1->refType, type2);
 	default:
 		yyerror("Type mismatch. Invalid operands for arithmetic operation ");
 		break;
 	}
-
 	return NULL;
 	}
 

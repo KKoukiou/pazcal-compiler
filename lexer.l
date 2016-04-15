@@ -9,9 +9,10 @@
 
 #define T_eof 		0
 
-int lineno =1;
+int lineno = 1;
 
 void ERROR (const char * fmt, ...);
+
 %}		
 
 %option noyywrap
