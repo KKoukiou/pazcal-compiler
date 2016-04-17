@@ -112,7 +112,7 @@ C ([^'"\\\n]|\\.)
 [ \t]+				{ /*nothing*/		}
 [\n]				{ lineno++;		}
 <<EOF>> 			{ return T_eof; 	}
-(\/\/[^\n]*)		{ /*nothing*/}
+(\/\/[^\n]*)		{/*nothing*/}
 "/*"		{BEGIN(COMMENT);	}
 <COMMENT>"*/"	{BEGIN(INITIAL);	}
 <COMMENT>\n	{lineno++;		}	

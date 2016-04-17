@@ -23,7 +23,10 @@ void GENQUAD(oper op, quad *x, quad *y, quad *z)
 {
 	Insert(op, x, y, z, &current_quad);
 	printf("%d: ", quadNext); printOP(op);
-	printQ(x); printQ(y); printQ(z); printf("\n");
+	printQ(x); 
+	printQ(y);
+	printQ(z);
+	printf("\n");
 	quadNext++;
 };
 
@@ -480,6 +483,8 @@ node_F Pop_F(node_F **top)
 
 void intercode_relop(Vinfo *dd, Vinfo *d1, Vinfo *d3, oper op)
 {
+	dd->se = NULL;
+
 	quad *x = (quad *) new(sizeof(quad));
 	quad *y = (quad *) new(sizeof(quad));
 	quad *z = (quad *) new(sizeof(quad));
@@ -619,9 +624,9 @@ void intercode_assign_op(Vinfo *d1, Vinfo *d3)
 	SymbolEntry *se;
 	
 	if (d3->type == typeBoolean) {
-		if (!d3->calculated) 
+		if (!d3->calculated ) { 
 			se = conversion_from_condition_to_expression(d3);
-		else {
+		} else {
 		   	_BACKPATCH(&d3->headTRUE, quadNext);
 			_BACKPATCH(&d3->headFALSE, quadNext);
 		}
@@ -686,22 +691,19 @@ void intercode_PAR_op(SymbolEntry **current_, Vinfo *d1)
 	/*Quadruples code*/
 	SymbolEntry *current = (*current_);
 
-	if (current->u.eParameter.mode == PASS_BY_VALUE &&
-		d1->type->kind != current->u.eParameter.type->kind) {
-		SymbolEntry *se;
+	quad *x = (quad *) new(sizeof(quad));
+	quad *y = (quad *) new(sizeof(quad));
+	quad *z = (quad *) new(sizeof(quad));
+	SymbolEntry *se;
+	
+	if (d1->type == typeBoolean) {
+		if (d1->se == NULL) { 
+			se = conversion_from_condition_to_expression(d1);
+		}
+	}
 
-		se = newTemporary(current->u.eParameter.type);
-		Vinfo v;
-
-		v.se = se;
-		intercode_assign_op(&(*d1), &v);
-
-		quad *x = (quad *) new(sizeof(quad));
-		quad *y = (quad *) new(sizeof(quad));
-		quad *z = (quad *) new(sizeof(quad));
-
-
-		if (d1->calculated)
+	/* If is constant or const_expr*/
+	if (d1->calculated == 1) {
 		switch (d1->type->kind) {
 		case TYPE_REAL:
 			x->type = QUAD_REAL;
@@ -712,86 +714,49 @@ void intercode_PAR_op(SymbolEntry **current_, Vinfo *d1)
 			x->value.intval = d1->value;
 			break;
 		case TYPE_BOOLEAN:
-			x->type = QUAD_INTEGER;
+			x->type = QUAD_BOOL;
 			x->value.intval = d1->value;
 			break;
 		case TYPE_CHAR:
-			x->type = QUAD_INTEGER;
+			x->type = QUAD_CHAR;
 			x->value.intval = d1->value;
+			break;
 		case TYPE_ARRAY:
-			if (d1->type->refType == typeChar) {
-			x->type = QUAD_STR;
-			x->value.strval = d1->strvalue;
+			if (d1->type->refType->kind == TYPE_CHAR) {
+				x->type = QUAD_STR;
+				x->value.strval = d1->strvalue;
 			}
 			break;
 		default:
-			printf("Unknown expression type\n");
-		} else {
-			x->type = QUAD_SE;
-			x->value.se = d1->se;
+			printf("Unknown constant expression type\n");
 		}
-
-		y->type = QUAD_EMPTY;
-		z->type = QUAD_SE;
-		z->value.se = se;
-		GENQUAD(OP_assign, x, y, z);
-
-
-		x = (quad *) new(sizeof(quad));
-		y = (quad *) new(sizeof(quad));
-		z = (quad *) new(sizeof(quad));
-
-		x->type = QUAD_SE;
-		x->value.se = se;
-		y->type = QUAD_MODE;
-		y->mode = current->u.eParameter.mode;
-		z->type = QUAD_EMPTY;
-		GENQUAD(OP_PAR, x, y, z);
-
 	} else {
-		quad *x = (quad *) new(sizeof(quad));
-		quad *y = (quad *) new(sizeof(quad));
-		quad *z = (quad *) new(sizeof(quad));
-
-		if (d1->calculated) {
-			switch (d1->type->kind) {
-			case TYPE_REAL:
-				x->type = QUAD_REAL;
-				x->value.floatval = d1->floatval;
-				break;
-			case TYPE_INTEGER:
-				x->type = QUAD_INTEGER;
-				x->value.intval = d1->value;
-				break;
-			case TYPE_BOOLEAN:
-				x->type = QUAD_INTEGER;
-				x->value.intval = d1->value;
-				break;
-			case TYPE_CHAR:
-				x->type = QUAD_INTEGER;
-				x->value.intval = d1->value;
-				break;
-			case TYPE_ARRAY:
-				if (d1->type->refType == typeChar) {
-					x->type = QUAD_STR;
-					x->value.strval = d1->strvalue;
-				}
-				break;
-			default:
-				printf("Unknown expression type\n");
-				break;
-			}
-		} else{
+		if (d1->type->kind == TYPE_POINTER)	
+			x->type = QUAD_POINTER;
+		else 
 			x->type = QUAD_SE;
+		if (equalType(d1->type, typeBoolean) && d1->se == NULL)
+			x->value.se = se;
+		else
 			x->value.se = d1->se;
-		}
-		y->type = QUAD_MODE;
-		y->mode = current->u.eParameter.mode;
-		z->type = QUAD_EMPTY;
-		GENQUAD(OP_PAR, x, y, z);
 	}
-		/*End Quadruples code*/
-}
+	y->type = QUAD_EMPTY;
+	se = newTemporary(current->u.eParameter.type);
+	z->type = QUAD_SE;
+	z->value.se = se;
+	GENQUAD(OP_assign, x, y, z);
+
+	x = (quad *) new(sizeof(quad));
+	y = (quad *) new(sizeof(quad));
+	z = (quad *) new(sizeof(quad));
+
+	x->type = QUAD_SE;
+	x->value.se = se;
+	y->type = QUAD_MODE;
+	y->mode = current->u.eParameter.mode;
+	z->type = QUAD_EMPTY;
+	GENQUAD(OP_PAR, x, y, z);
+	}
 
 void intercode_arithmetic_op_givenRET(Vinfo *dd, Vinfo *d1, Vinfo *d3, oper op)
 {
