@@ -169,4 +169,4 @@ void conversion_from_expression_to_condition(Vinfo *d0, Vinfo *d1);
 /*συνάρτηση δημιουργίας τετράδων με δοσμένο όρισμα επιστροφής (για το FOR) */
 void intercode_arithmetic_op_givenRET(Vinfo *dd, Vinfo *d1, Vinfo *d3, oper op);
 
-
+void initialize_array_to_zero(SymbolEntry *se);

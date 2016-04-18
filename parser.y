@@ -9,42 +9,39 @@
 void yyerror (const char *msg);
 int yylex();
 
-PassMode formal_mode;
+PassMode formal_mode; 	/*Argument passmode*/
+char *formal_name;
 
+/*
+Auxilary global variables
+*/
 Type const_expr_type;
 Type var_type;
 Type functype;
-
-char *formal_name;
-
 SymbolEntry *current;
 SymbolEntry *se;
-SymbolEntry *f;
 SymbolEntry *f_se;
-SymbolEntry *program;
 SymbolEntry *call_res;
 condition *condFALSE ;
 condition *L1;
 condition *L2;
-
 node_N *head_L1;
 node_N *head_L2;
 node_N *head_condFALSE;
 node_N *while_stack;
-
 int while_backQUAD;
 int for_backQUAD;
 node_F *for_stack;
-condition *conditionFALSE;
 SymbolEntry *for_counter;
-
+condition *conditionFALSE;
+int array;
+condition *for_list;
+SymbolEntry *array_init;
+int offset;
 /*
 is 1 if we are inside a routine
 */
 bool is_global = 1;
-int array;
-condition *for_list;
-
 
 #include "aux.c"
 
@@ -104,7 +101,6 @@ condition *for_list;
 %token T_plusplus 	"++"
 %token T_minusminus	"--"
 
-
 %left T_or T_bor
 %left T_band T_and
 %left T_eq T_neq
@@ -112,7 +108,6 @@ condition *for_list;
 %left '+' '-'
 %left T_bmul  T_bdiv T_bmod T_mod
 %left T_uminus T_uplus T_unot T_not
-
 
 %nonassoc "then"
 %nonassoc "else"
@@ -138,9 +133,12 @@ condition *for_list;
 %type<headNEXT> local_def
 %%
 
-/*	Recursion: 'right is wrong'	*/
 
-module		:/*empty*/
+/*
+Recursion: 'right is wrong'
+*/
+
+module	:/*empty*/
 		|module declaration
 		;
 declaration	:
@@ -155,9 +153,9 @@ const_expr_more :/*empty*/
 			compatible_assignment(const_expr_type, $5.type);
 			switch (const_expr_type->kind) {
 			case TYPE_REAL:
-				if($5.type->kind == TYPE_REAL)
+				if(equalType($5.type, typeReal))
 					se = newConstant($3, const_expr_type, $5.floatval);
-				else if ($5.type->kind == TYPE_INTEGER)
+				else if (equalType($5.type , typeInteger))
 					se = newConstant($3, const_expr_type, $5.value);
 				break;
 			case TYPE_INTEGER:
@@ -167,9 +165,9 @@ const_expr_more :/*empty*/
 				se = newConstant($3, const_expr_type, $5.value);
 				break;
 			case TYPE_CHAR:
-				if ($5.type->kind == TYPE_INTEGER) 
+				if (equalType($5.type, typeInteger)) 
 					se = newConstant($3, const_expr_type, $5.value & 0xFF);
-				else if ($5.type->kind == TYPE_CHAR) 
+				else if (equalType($5.type, typeChar)) 
 					se = newConstant($3, const_expr_type, $5.value);
 				break;
 			default:
@@ -185,9 +183,9 @@ const_def 	:"const" type {
 			compatible_assignment($2, $6.type);
 			switch (const_expr_type->kind) {
 			case TYPE_REAL:
-				if ($6.type->kind == TYPE_REAL)
+				if (equalType($6.type, typeReal))
 					se = newConstant($4, const_expr_type, $6.floatval);
-				else if ($6.type->kind == TYPE_INTEGER)
+				else if (equalType($6.type ,typeInteger))
 					se = newConstant($4, const_expr_type, $6.value);
 				break;
 			case TYPE_INTEGER:
@@ -197,9 +195,9 @@ const_def 	:"const" type {
 				se = newConstant($4, const_expr_type, $6.value);
 				break;
 			case TYPE_CHAR:
-				if ($6.type->kind == TYPE_INTEGER)
+				if (equalType($6.type ,typeInteger))
 					se = newConstant($4, const_expr_type, $6.value & 0xFF);
-				else if ($6.type->kind == TYPE_CHAR)
+				else if (equalType($6.type ,typeChar))
 					se = newConstant($4, const_expr_type, $6.value);
 				break;
 			default:
@@ -217,10 +215,10 @@ var_def :type
 
 var_init	:"id" '=' expr
 		{
+			compatible_assignment(var_type, $3.type);
 			se = newVariable($1, var_type);
-			if (is_global)
-				if($3.calculated != 1)
-					yyerror("Global variable if initialized must be with an "
+			if (is_global && $3.calculated != 1)
+				yyerror("Global variable if initialized must be with an "
 							"evaluated expression");
 			/*Quadruples code*/
 			Vinfo a;
@@ -249,23 +247,27 @@ var_init	:"id" '=' expr
 		|"id" '[' const_expr ']'
 		{
 			if (!$3.calculated)
-				yyerror("IndexError:At declaration Array index must be a "
+				yyerror("IndexError: At declaration Array index must be a "
 						"constant value");
 			else if ($3.calculated && ($3.value <= 0))
-				yyerror("IndexError:Array index negative number");
+				yyerror("IndexError: Array index negative number");
+			offset = $3.value;
 		}
 		matrixD
 		{
-			newVariable($1, typeArray($3.value, $6));
+			se = newVariable($1, typeArray($3.value, $6));
+			if (is_global) {	
+				initialize_array_to_zero(se);
+			}
+
 		}
 		|var_init ',' "id" '=' expr
 		{
+			compatible_assignment(var_type, $5.type);
 			se = newVariable($3, var_type);
-
 			if (is_global && $5.calculated != 1)
 					yyerror("Global variable if initialized must be with an "
 							"evaluated expression");
-
 			/*Quadruples code*/
 			Vinfo a;
 			a.type = var_type;
@@ -279,7 +281,6 @@ var_init	:"id" '=' expr
 		|var_init ',' "id"
 		{
 			se = newVariable($3, var_type);
-
 			if (is_global) {
 				Vinfo a ;
 				a.type = var_type;
@@ -294,19 +295,19 @@ var_init	:"id" '=' expr
 		}
 		|var_init ',' "id" '[' const_expr ']'
 		{
-			if (!$5.calculated && ($5.type != typeInteger))
+			if (!$5.calculated && (!equalType($5.type, typeInteger)))
 				yyerror("IndexError:At declaration Array index must be a "
 						"constant value");
 			if ($5.calculated && ($5.value < 0))
 				yyerror("IndexError:Array index out of range");
-
-			if (is_global) {
-				/*must initialize everything to zero*/
-			}
+			offset = $5.value;
 		}
 		matrixD
 		{
-			newVariable($3, typeArray($5.value, $8));
+			se = newVariable($3, typeArray($5.value, $8));
+			if (is_global) {	
+				initialize_array_to_zero(se);
+			}
 		}
 		;
 
@@ -320,6 +321,7 @@ matrixD 	:/*empty*/
 				yyerror("IndexError: Array index must be a constant value");
 			if ($2.calculated && (!$2.value > 0))
 				yyerror("IndexError: Array index out of range");
+			offset = $2.value;
 		}
 		matrixD 	/*right recursion  :(*/
 		{
@@ -333,7 +335,7 @@ more_arguments 	: /*empty*/
 			var_type = $2;
 		} formal
 		{
-			se = newParameter(formal_name, var_type, formal_mode, f);
+			se = newParameter(formal_name, var_type, formal_mode, f_se);
 		}
 		more_arguments  	//right recursion :( :(
 		;
@@ -344,7 +346,7 @@ arguments	:/*empty*/
 			var_type = $1;
 		} formal
 		{
-			se = newParameter(formal_name, var_type, formal_mode, f);
+			se = newParameter(formal_name, var_type, formal_mode, f_se);
 		}
 		more_arguments
 		;
@@ -368,7 +370,7 @@ formal	:"id"
 			var_type = typeArray($3.value, $5);
 		}
 		|"id" '[' ']' matrixD
-		 /*In parameters we can omit the first dimension of a matrix*/
+		 /*In formal parameters we can omit the first dimension of a matrix*/
 		{
 			formal_name = $1;
 			formal_mode = PASS_BY_REFERENCE;
@@ -377,18 +379,18 @@ formal	:"id"
 		;
 proc 	:"PROC" "id" '('
 		{
-			f = newFunction($2);
-			if (f == NULL) 
+			f_se = newFunction($2);
+			if (f_se == NULL) 
 				yyerror("Dublicate identifier");
 			openScope();
 		
 			/*Thats needed for recursive function bodies if no definition is
 			 * ahead*/
-			f->u.eFunction.resultType = typeVoid;
+			f_se->u.eFunction.resultType = typeVoid;
 
 			/*Quadruples code*/
 			quad *x = (quad *) new(sizeof(quad));
-			x->value.se = f;
+			x->value.se = f_se;
 			x->type = QUAD_SE;
 			quad *y = (quad *) new(sizeof(quad));
 			y->type = QUAD_EMPTY;
@@ -401,18 +403,18 @@ proc 	:"PROC" "id" '('
 func		:"FUNC" type "id" '('
 		{
 			functype = $2;
-			f = newFunction($3);
-			if (f == NULL)
+			f_se = newFunction($3);
+			if (f_se == NULL)
 				yyerror("Dublicate identifier");
 			openScope();
 
 			/*Thats needed for recursive function bodies if no definition is
 			 * ahead*/
-			f->u.eFunction.resultType = functype;
+			f_se->u.eFunction.resultType = functype;
 
 			/*Quadruples code*/
 			quad *x = (quad *) new(sizeof(quad));
-			x->value.se = f;
+			x->value.se = f_se;
 			x->type = QUAD_SE;
 			quad *y = (quad *) new(sizeof(quad));
 			y->type = QUAD_EMPTY;
@@ -425,12 +427,12 @@ func		:"FUNC" type "id" '('
 routine 	:proc arguments ')' ';'
 		{
 			closeScope();
-			forwardFunction(f);
-			endFunctionHeader(f, typeVoid);
+			forwardFunction(f_se);
+			endFunctionHeader(f_se, typeVoid);
 
 			/*Quadruples code*/
 			quad *x = (quad *) new(sizeof(quad));
-			x->value.se = f;
+			x->value.se = f_se;
 			x->type = QUAD_SE;
 			quad *y = (quad *) new(sizeof(quad));
 			y->type = QUAD_EMPTY;
@@ -442,12 +444,12 @@ routine 	:proc arguments ')' ';'
 		|func arguments ')' ';'
 		{
 			closeScope();
-			forwardFunction(f);
-			endFunctionHeader(f, functype);
+			forwardFunction(f_se);
+			endFunctionHeader(f_se, functype);
 
 			/*Quadruples code*/
 			quad *x = (quad *) new(sizeof(quad));
-			x->value.se = f;
+			x->value.se = f_se;
 			x->type = QUAD_SE;
 			quad *y = (quad *) new(sizeof(quad));
 			y->type = QUAD_EMPTY;
@@ -464,11 +466,11 @@ routine 	:proc arguments ')' ';'
 		{
 			is_global = 1;
 			closeScope();
-			endFunctionHeader(f, typeVoid);
+			endFunctionHeader(f_se, typeVoid);
 
 			/*Quadruples code*/
 			quad *x = (quad *) new(sizeof(quad));
-			x->value.se = f;
+			x->value.se = f_se;
 			x->type = QUAD_SE;
 			quad *y = (quad *) new(sizeof(quad));
 			y->type = QUAD_EMPTY;
@@ -486,11 +488,11 @@ routine 	:proc arguments ')' ';'
 			is_global = 1;
 
 			closeScope();
-			endFunctionHeader(f, functype);
+			endFunctionHeader(f_se, functype);
 
 			/*Quadruples code*/
 			quad *x = (quad *) new(sizeof(quad));
-			x->value.se = f;
+			x->value.se = f_se;
 			x->type = QUAD_SE;
 			quad *y = (quad *) new(sizeof(quad));
 			y->type = QUAD_EMPTY;
@@ -503,12 +505,12 @@ routine 	:proc arguments ')' ';'
 		;
 program_header	:"PROGRAM" "id" '(' ')'
 		{
-			program = newFunction($2);
+			f_se= newFunction($2);
 			openScope();
 
 			/*Quadruples code*/
 			quad *x = (quad *) new(sizeof(quad));
-			x->value.se = program;
+			x->value.se = f_se;
 			x->type = QUAD_SE;
 			quad *y = (quad *) new(sizeof(quad));
 			y->type = QUAD_EMPTY;
@@ -526,11 +528,11 @@ program 	:program_header
 		{
 			is_global = 1;
 			closeScope();
-			endFunctionHeader(program, typeVoid);
+			endFunctionHeader(f_se, typeVoid);
 
 			/*Quadruples code*/
 			quad *x = (quad *) new(sizeof(quad));
-			x->value.se = program;
+			x->value.se = f_se;
 			x->type = QUAD_SE;
 			quad *y = (quad *) new(sizeof(quad));
 			y->type = QUAD_EMPTY;
@@ -567,7 +569,6 @@ expr 	:"int_const"
 			$$.type = typeReal;
 			$$.floatval = $1;
 			$$.calculated = 1;
-			printf("Read Value is %Lf\n",$$.floatval );
 		}
 		|"string_const"
 		{
@@ -622,12 +623,17 @@ expr 	:"int_const"
 				case TYPE_CHAR:
 					$$.value = $1.se->u.eConstant.value.vChar;
 					break;
+				case TYPE_ARRAY:
+					if (equalType($1.se->u.eConstant.type->refType, typeChar))
+						$$.strvalue = (char *) $1.se->u.eConstant.value.vString;
+					break;
 				default:
 					printf("Unknown expression type\n");
 				}
 			}
 			else 
 				$$.se = $1.se;
+			$$.type = $1.type;
 		}
 		|call
 		{
@@ -636,7 +642,7 @@ expr 	:"int_const"
 			$$.type = $1;
 
 			/*Quadruples code */
-			if ($1 == typeBoolean) {
+			if (equalType($1, typeBoolean)) {
 				quad *x = (quad *) new(sizeof(quad));
 				quad *y = (quad *) new(sizeof(quad));
 				quad *z = (quad *) new(sizeof(quad));
@@ -1046,7 +1052,6 @@ expr 	:"int_const"
 				intercode_arithmetic_op(&$$, &$1, &$3, OP_bmod);
 			/*End Quadruples code*/
 		}
-		//Start relop
 		|expr T_eq expr
 		{
 			compatible_arithmetic_OP($1.type, $3.type);
@@ -1430,7 +1435,6 @@ expr 	:"int_const"
 			/*End Quadruples Code*/
 			}
 		}
-		/*Start and or operations*/
 		|T_not expr
 		{
 			$$.calculated = 0;
@@ -1490,7 +1494,7 @@ expr 	:"int_const"
 
 			if ($2.type == typeBoolean) {
 				$$.type = typeBoolean;
-				if ($2.calculated == 1 ) {//if const value
+				if ($2.calculated == 1 ) {
 					$$.calculated = 1;
 					$$.value = !($2.value);
 				}
@@ -1573,9 +1577,7 @@ expr 	:"int_const"
 			/*Quadruples Code*/
 			$$.headTRUE = $4.headTRUE;
 			$$.headFALSE = MERGE(&$1.headFALSE, &$4.headFALSE);
-			printf("HEADTRUE\n");
 			DisplayCList(&$$.headTRUE);
-			printf("HEADFALSE\n");
 			DisplayCList(&$$.headFALSE);
 			/*End Quadruples Code*/
 
@@ -1773,12 +1775,9 @@ call 	:"id" '('
 			quad *y = (quad *) new(sizeof(quad));
 			quad *z = (quad *) new(sizeof(quad));
 
-			printf("END OF CALL \n");
-
 			if (!equalType($$, typeVoid)) {
-				printf("END OF CALL 1 \n");
 				PushSE(call_res, &call_result_stack);
-				call_res = newTemporary($$);//CALL PLACE
+				call_res = newTemporary($$);
 				x->type = QUAD_SE;
 				x->value.se = call_res;
 				x->type =QUAD_MODE;
@@ -1788,7 +1787,6 @@ call 	:"id" '('
 				z->type = QUAD_EMPTY;
 				GENQUAD(OP_PAR, x, y, z);
 			}
-			printf("END OF CALL 2 \n");
 
 			x = (quad *) new(sizeof(quad));
 			y = (quad *) new(sizeof(quad));
@@ -1822,9 +1820,7 @@ more_expr: /*empty*/
 				compatible_PASS_BY_REFERENCE(current->u.eParameter.type, $2.type);
 			else 
 				yyerror("Error here\n");
-
 			/*Quadruples code*/
-			/*CHECK THIS LATER*/
 			/*if ($2.type == typeBoolean) {
 				$2.se = conversion_from_condition_to_expression(&$2);
 			}
@@ -1849,9 +1845,7 @@ args	:/*empty*/
 			}
 			else if (current->u.eParameter.mode == PASS_BY_REFERENCE) {
 				compatible_PASS_BY_REFERENCE(current->u.eParameter.type, $1.type);
-			} else {
-				yyerror("Something went wrong\n");
-			}
+			} 
 			/*Quadruples code*/
 			/*CHECK THIS LATER*/
 			/*if ($1.type == typeBoolean) {
@@ -1889,7 +1883,6 @@ inner_block	:/*empty*/
 		{
 			$<headNEXT>$ = $1;
 			_BACKPATCH(&$<headNEXT>$, quadNext);
-			printf("_BACKPATCH %d\n", quadNext);
 		}
 		inner_block
 		{
@@ -1913,9 +1906,10 @@ stmt		:';'
 		|l_value '=' expr ';'
 		{
 			compatible_assignment($1.type, $3.type);
+
 			/*Quadruples code*/
-			if ($3.type == TYPE_VOID)
-				yyerror("Cannot get result of a void function");
+			if (equalType($3.type, typeVoid))
+				yyerror("Function is of type Void");
 			intercode_assign_op(&$1, &$3);
 			$$ = EMPTYLIST();
 			/*End Quadruples code*/
@@ -1924,6 +1918,7 @@ stmt		:';'
 		|l_value "+=" expr ';'
 		{
 			compatible_assignment($1.type, compatible_arithmetic_OP($1.type, $3.type));
+
 			/*Quadruples code*/
 			Vinfo v ;
 			intercode_arithmetic_op(&v, &$1, &$3, OP_PLUS);
@@ -1958,6 +1953,7 @@ stmt		:';'
 		{
 			if ($3.calculated == 1 && (($3.value == 0 && $3.type == typeInteger) || ($3.floatval == 0 && $3.type == typeReal)))
 				yyerror("ZeroDivisionError: integer division or modulo by zero.");
+
 			compatible_assignment($1.type, compatible_arithmetic_OP($1.type, $3.type));
 
 			/*Quadruples code*/
@@ -1971,6 +1967,7 @@ stmt		:';'
 		{
 			if ($3.calculated == 1 && $3.value == 0 && $3.type == typeInteger)
 				yyerror("ZeroDivisionError: integer division or modulo by zero.");
+
 			compatible_assignment($1.type, compatible_arithmetic_OP($1.type, $3.type));
 
 			/*Quadruples code*/
@@ -1983,15 +1980,22 @@ stmt		:';'
 		|l_value "++" ';'
 		{
 			compatible_arithmetic_OP($1.type, typeInteger);
+
 			/*Quadruples code*/
 			quad *x = (quad *) new(sizeof(quad));
 			quad *y = (quad *) new(sizeof(quad));
 			quad *z = (quad *) new(sizeof(quad));
-			x->type = QUAD_SE;
+			if ($1.type->kind == TYPE_POINTER)
+				x->type = QUAD_POINTER;
+			else
+				x->type = QUAD_SE;
 			x->value.se = $1.se;
 			y->type = QUAD_INTEGER;
 			y->value.intval = 1;
-			z->type = QUAD_SE;
+			if ($1.type->kind == TYPE_POINTER)
+				z->type = QUAD_POINTER;
+			else 
+				z->type = QUAD_SE;
 			z->value.se = $1.se;
 			GENQUAD(OP_PLUS, x, y, z);
 			$$= EMPTYLIST();
@@ -2000,19 +2004,27 @@ stmt		:';'
 		|l_value "--" ';'
 		{
 			compatible_arithmetic_OP($1.type, typeInteger);
+
 			/*Quadruples code*/
 			quad *x = (quad *) new(sizeof(quad));
 			quad *y = (quad *) new(sizeof(quad));
 			quad *z = (quad *) new(sizeof(quad));
-			x->type = QUAD_SE;
+			if ($1.type->kind == TYPE_POINTER)
+				x->type = QUAD_POINTER;
+			else
+				x->type = QUAD_SE;
 			x->value.se = $1.se;
 			y->type = QUAD_INTEGER;
 			y->value.intval = 1;
-			z->type = QUAD_SE;
+			if ($1.type->kind == TYPE_POINTER)
+				z->type = QUAD_POINTER;
+			else
+				z->type = QUAD_SE;
 			z->value.se = $1.se;
 			GENQUAD(OP_MINUS, x, y, z);
-			$$= EMPTYLIST();
 			/*End Quadruples code*/
+
+			$$= EMPTYLIST();
 		}
 		|l_value
 		{
@@ -2020,9 +2032,7 @@ stmt		:';'
 		}
 		|call ';'
 		{
-			/*Quadruples code*/
 			$$ = EMPTYLIST();
-			/*End Quadruples code*/
 		}
 		|"if" '(' expr ')'
 		{
@@ -2043,7 +2053,6 @@ stmt		:';'
 			if ($3.se != NULL || $3.calculated)
 				conversion_from_expression_to_condition(&$3, &$3);
 
-
 			if (!equalType($3.type, typeBoolean))
 				yyerror("Type mismatch. Condition must be of type bool");
 
@@ -2062,7 +2071,6 @@ stmt		:';'
 			/*Quadruples code*/
 			condition *aux = MERGE(&L1, &L2);
 			$$ = MERGE(&aux, &$6);
-			printf("Will display then clause next list :");
 			DisplayCList(&$$);
 			L2 = Pop_N(&head_L2);
 			L1 = Pop_N(&head_L1);
@@ -2093,9 +2101,8 @@ stmt		:';'
 				GENQUAD(OP_assign, x, y, z);
 			}
 
-			/*NOT SURE IF THATS NEEDED HERE*/
 			if ($4.se != NULL)
-				printf("NAME is : %s\n", $4.se->id),conversion_from_expression_to_condition(&$4, &$4);
+				conversion_from_expression_to_condition(&$4, &$4);
 			
 			if ($4.type != typeBoolean)
 				yyerror("Expression must be of type Boolean\n");
@@ -2108,7 +2115,6 @@ stmt		:';'
 		{
 			/*Quadruples code*/
 			_BACKPATCH(&$7, while_backQUAD);
-
 			quad *x = (quad *) new(sizeof(quad));
 			quad *y = (quad *) new(sizeof(quad));
 			quad *z = (quad *) new(sizeof(quad));
@@ -2204,7 +2210,6 @@ stmt		:';'
 			z->value.se = se;
 			GENQUAD(OP_assign, x, y, z);
 			
-			/*add step*/
 			if ($8 == _TO) {
 				Vinfo x;
 				x.type = typeInteger;
@@ -2252,9 +2257,6 @@ stmt		:';'
 			for_backQUAD = f.for_backQUAD;
 			se = f.for_se;
 			/*End Quadruples code*/
-			
-			
-			/*TODO : Store back the for_counter to the iterator*/
 		}
 		|"do"
 		{
@@ -2271,7 +2273,7 @@ stmt		:';'
 			_BACKPATCH(&$3, while_backQUAD);
 			_BACKPATCH(&$6.headFALSE, while_backQUAD);
 			$$ = $6.headTRUE;
-				while_backQUAD = Pop_W(&while_stack);
+			while_backQUAD = Pop_W(&while_stack);
 			/*End Quadruples code*/
 		}
 		|"break" ';'
@@ -2308,20 +2310,21 @@ stmt		:';'
 			quad *z = (quad *) new(sizeof(quad));
 
 			if ($2.calculated) {
-				if ($2.type == typeChar) {
+				if (equalType($2.type, typeChar)) {
 					x->type = QUAD_CHAR;
 					x->value.intval = $2.value;
 				}
-				else if ($2.type == typeInteger) {
+				else if (equalType($2.type, typeInteger)) {
 					x->type = QUAD_INTEGER;
 					x->value.intval = $2.value;
 				}
-				else if ($2.type == typeBoolean) {
-					//se = conversion_from_condition_to_expression(&$2);
+				else if (equalType($2.type, typeBoolean)) {
+					if (!$2.calculated)
+						se = conversion_from_condition_to_expression(&$2);
 					x->type = QUAD_BOOL;
 					x->value.se = $2.se;
 				}
-				else if ($2.type == typeReal) {
+				else if (equalType($2.type, typeReal)) {
 					x->type = QUAD_REAL;
 					x->value.floatval = $2.floatval;
 				}
@@ -2332,7 +2335,7 @@ stmt		:';'
 					x->type = QUAD_SE;
 				x->value.se = $2.se;
 			
-				if ($2.type == typeBoolean) {
+				if (equalType($2.type, typeBoolean)) {
 					se = conversion_from_condition_to_expression(&$2);
 					x->value.se = se;
 				}
@@ -2344,13 +2347,11 @@ stmt		:';'
 		}
 		|block
 		{
-			$$ = $1;	/*stmt.NEXT = block.NEXT*/
+			$$ = $1;	
 		}
 		|write '('format  more_format ')' ';'
 		{
-			/*Quadruples code*/
 			$$ = EMPTYLIST();;
-			/*End Quadruples code*/
 		}
 		|write '(' ')' ';'
 		{
@@ -2378,15 +2379,13 @@ thenclause:	/*empty*/
 		}
 		stmt
 		{
-			/*Quadruples code*/
 			L2 = $3;
-			/*End Quadruples code*/
 		}
 		;
 more_format: /*empty*/
 		{
 		}
-		|',' format more_format /*Check this right recursion*/
+		|',' format more_format 		
 		;
 write	:"WRITE"
 		|"WRITELN"
@@ -2395,7 +2394,6 @@ write	:"WRITE"
 		;
 format	:expr 
 		{	
-			printf("DEBUG HERE\n");
 			SymbolEntry *fe;
 			SymbolEntry *currentA;
 			
@@ -2416,20 +2414,17 @@ format	:expr
 				fe = lookupEntry("WRITE_STRING", LOOKUP_ALL_SCOPES, false);
 			else 
 				yyerror("Unknown type");
-			/*FIX THIS , what we have a string from an array as parameter*/
+			/*Quadruples code*/
             currentA = fe->u.eFunction.firstArgument;
-			
 			intercode_PAR_op(&currentA, &$1);
-
             currentA = currentA->u.eParameter.next;
-
+			
 			Vinfo a;
 			a.type = typeInteger;
 			a.calculated = 1;
 			a.value = 0;
 			intercode_PAR_op(&currentA, &a);
 			
-			/*Quadruples code*/
             quad *x = (quad *) new(sizeof(quad));
             quad *y = (quad *) new(sizeof(quad));
             quad *z = (quad *) new(sizeof(quad));
@@ -2459,7 +2454,7 @@ step 	:"STEP" expr
 				yyerror("Step mst be a positive interger");
 			$$ = $2;
 		}
-		|/*empty step*/
+		|/*empty step size*/
 		{
 			$$.calculated = 1;
 			$$.value = 1;
@@ -2479,7 +2474,6 @@ void yyerror (const char *msg)
 
 int main (void)
 {
-	/*Define all routines that exist in the pazcal library*/
 	se_stack = NULL;
 	l_value_stack = NULL;
 	top = NULL;
@@ -2492,6 +2486,7 @@ int main (void)
 	yyparse();
 	closeScope();
 	destroySymbolTable();
+
 	printf("\n\n");
 	DisplayQuads(&head_quad);
 	return 0;

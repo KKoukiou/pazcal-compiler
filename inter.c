@@ -915,6 +915,43 @@ void conversion_from_expression_to_condition(Vinfo *d0, Vinfo *d1)
 	return;
 }
 
+void initialize_array_to_zero(SymbolEntry *se)
+{
+	Type type = se->u.eVariable.type;
+    if (type->kind != TYPE_ARRAY) {
+        Vinfo a ;
+        a.type = typePointer(type);
+        a.se = se;
+
+        Vinfo zero;
+        zero.type = typeInteger;
+        zero.calculated = 1;
+        zero.value = 0;
+
+        intercode_assign_op(&a, &zero);
+		return;
+    }
+    for (int i=0; i<type->size; i++){
+		/*Quadruples code*/
+		quad *x = (quad *) new(sizeof(quad));
+		quad *y = (quad *) new(sizeof(quad));
+		quad *z = (quad *) new(sizeof(quad));
+
+		y->type = QUAD_INTEGER;
+		y->value.intval = i;
+		
+		x->type = QUAD_SE;
+		x->value.se = se;
+		z->type = QUAD_SE;
+		z->value.se = newTemporary(type->refType);
+		se = z->value.se;
+		GENQUAD(OP_ARRAY, x, y, z);
+		/*End Quadruples code*/
+		initialize_array_to_zero(se);
+    }
+}
+
+
 void ERROR (const char *fmt, ...);
 
 void hiterror (const char *msg)
