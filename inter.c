@@ -4,12 +4,7 @@
 #include "general.h"
 #include "error.h"
 #include "symbol.h"
-
-#ifndef _INTER_
-#define _INTER_
 #include "inter.h"
-#endif
-
 #include "parser.h"
 
 void hiterror (const char *msg);
@@ -22,11 +17,11 @@ int NEXTQUAD(void)
 void GENQUAD(oper op, quad *x, quad *y, quad *z)
 {
 	Insert(op, x, y, z, &current_quad);
-	printf("%d: ", quadNext); printOP(op);
-	printQ(x); 
-	printQ(y);
-	printQ(z);
-	printf("\n");
+	fprintf(stdout, "%d: ", quadNext); printOP(stdout, op);
+	printQ(stdout, x); 
+	printQ(stdout, y);
+	printQ(stdout, z);
+	fprintf(stdout, "\n");
 	quadNext++;
 };
 
@@ -35,23 +30,6 @@ int NEXTTEMP(Type t)
 	SymbolEntry *se = newTemporary(t);
 
 	return se->u.eTemporary.number;
-};
-
-void BACKPATCH(qnode **head, quad *q)
-{
-	qnode *temp;
-
-	temp = *head;
-	if (temp == NULL)
-		printf("The list is empty\n");
-	else {
-		while (temp != NULL) {
-			if (temp->z->type == QUAD_TOFILL)
-				temp->z = q;
-			temp = temp->next;
-		}
-	}
-
 };
 
 void _BACKPATCH(condition **head, int q)
@@ -113,6 +91,7 @@ void Insert(oper op, quad *x, quad *y, quad *z, qnode **current_quad)
 	}
 	(*current_quad)->next = New;
 	(*current_quad) = (*current_quad)->next;
+	(*current_quad)->nestingLevel = currentScope->nestingLevel;
 
 }
 
@@ -133,147 +112,162 @@ qnode *get_qnode(oper op, quad *x, quad *y, quad *z)
 }
 
 
-void DisplayQuads(qnode **head)
+void DisplayQuads(qnode **head, FILE *fp)
 {
 	qnode *temp;
-
 	temp = *head;
 	if (temp == NULL)
 			printf("\nThe list is empty!\n");
 	else {
 			while (temp != NULL) {
-				printf("%d: ", temp->n); printOP(temp->op);
-				printQ(temp->x); printQ(temp->y); printQ(temp->z);
-				printf("\n");
+				fprintf(fp, "%d: ", temp->n); printOP(fp, temp->op);
+				printQ(fp, temp->x); printQ(fp, temp->y); printQ(fp, temp->z);
+				fprintf(fp, "\n");
 				temp = temp->next;
 			}
 	}
 }
 
-void printQ(quad *q)
+void DeleteQuads(qnode **head)
+{
+	qnode *temp;
+
+	temp = *head;
+	if (temp == NULL)
+			printf("\nThe list successfully deleted!\n");
+	else {
+			while (temp != NULL) {
+				qnode *aux = temp;
+				temp = temp->next;
+				delete(aux);
+			}
+	}
+}
+
+void printQ(FILE *fp, quad *q)
 {
 	switch (q->type) {
 	case QUAD_TOFILL:
-		printf(",*");
+		fprintf(fp, ", *");
 		break;
 	case QUAD_SE:
-		printf(",%s", q->value.se->id);
+		fprintf(fp, ", %s",  q->value.se->id);
 		break;
 	case QUAD_INTEGER:
-		printf(",%d", q->value.intval);
+		fprintf(fp, ", %d", q->value.intval);
 		break;
 	case QUAD_CHAR:
-		printf(",'%c'", (char) q->value.intval);
+		fprintf(fp, ", '%c'", (char) q->value.intval);
 		break;
 	case QUAD_BOOL:
-		printf(",%d", q->value.intval);
+		fprintf(fp, ", %d", q->value.intval);
 		break;
 	case QUAD_REAL:
-		printf(",%Lf", q->value.floatval);
+		fprintf(fp, ", %Lf", q->value.floatval);
 		break;
 	case QUAD_STR:
-		printf(",%s", q->value.strval);
+		fprintf(fp, ", %s", q->value.strval);
 		break;
 	case QUAD_EMPTY:
-		printf(",-");
+		fprintf(fp, ", -");
 		break;
 	case QUAD_MODE:
 		if (q->mode == PASS_BY_VALUE)
-			printf(",V");
+			fprintf(fp, ", V");
 		else if (q->mode == PASS_BY_REFERENCE)
-			printf(",R");
+			fprintf(fp, ", R");
 		else if (q->mode == RET)
-			printf(",RET");
+			fprintf(fp, ", RET");
 		break;
 	case QUAD_TAG:
-		printf(",%d", q->value.intval);
+		fprintf(fp, ", %d", q->value.intval);
 		break;
 	case QUAD_POINTER:
-		printf(",[%s]", q->value.se->id);
+		fprintf(fp, ", [%s]", q->value.se->id);
 		break;	
 	default:
-		printf("Unknown quad type");
+		fprintf(fp, "Unknown quad type");
 		break;
 	}
 }
 
-void printOP(oper op)
+void printOP(FILE *fp, oper op)
 {
 	switch (op) {
 	case OP_UNIT:
-		printf("unit");
+		fprintf(fp, "unit");
 		break;
 	case OP_ENDU:
-		printf("endu");
+		fprintf(fp, "endu");
 		break;
 	case OP_JUMP:
-		printf("jump");
+		fprintf(fp, "jump");
 		break;
 	case OP_JUMPL:
-		printf("jumpl");
+		fprintf(fp, "jumpl");
 		break;
 	case OP_LABEL:
-		printf("label");
+		fprintf(fp, "label");
 		break;
 	case OP_IFB:
-		printf("ifb");
+		fprintf(fp, "ifb");
 		break;
 	case OP_CALL:
-		printf("call");
+		fprintf(fp, "call");
 		break;
 	case OP_PAR:
-		printf("par");
+		fprintf(fp, "par");
 		break;
 	case OP_RET:
-		printf("ret");
+		fprintf(fp, "ret");
 		break;
 	case OP_RETV:
-		printf("retv");
+		fprintf(fp, "retv");
 		break;
 	case OP_eq:
-		printf("=");
+		fprintf(fp, "=");
 		break;
 	case OP_neq:
-		printf("<>");
+		fprintf(fp, "<>");
 		break;
 	case OP_less:
-		printf("<");
+		fprintf(fp, "<");
 		break;
 	case OP_greater:
-		printf(">");
+		fprintf(fp, ">");
 		break;
 	case OP_leq:
-		printf("<=");
+		fprintf(fp, "<=");
 		break;
 	case OP_geq:
-		printf(">=");
+		fprintf(fp, ">=");
 		break;
 	case OP_PLUS:
-		printf("+");
+		fprintf(fp, "+");
 		break;
 	case OP_MINUS:
-		printf("-");
+		fprintf(fp, "-");
 		break;
 	case OP_bmul:
-		printf("*");
+		fprintf(fp, "*");
 		break;
 	case OP_bdiv:
-		printf("/");
+		fprintf(fp, "/");
 		break;
 	case OP_bmod:
-		printf("%%");
+		fprintf(fp, "%%");
 		break;
 	case OP_mod:
-		printf("%%");
+		fprintf(fp, "%%");
 		break;
 	case OP_assign:
-		printf(":=");
+		fprintf(fp, ":=");
 		break;
 	case OP_ARRAY:
-		printf("array");
+		fprintf(fp, "array");
 		break;
 	default:
-		printf("UNKNOWN operation or operands\n");
+		fprintf(fp, "UNKNOWN operation or operands\n");
 		break;
 	}
 
@@ -740,6 +734,7 @@ void intercode_PAR_op(SymbolEntry **current_, Vinfo *d1)
 		else
 			x->value.se = d1->se;
 	}
+	/*
 	y->type = QUAD_EMPTY;
 	se = newTemporary(current->u.eParameter.type);
 	z->type = QUAD_SE;
@@ -749,9 +744,10 @@ void intercode_PAR_op(SymbolEntry **current_, Vinfo *d1)
 	x = (quad *) new(sizeof(quad));
 	y = (quad *) new(sizeof(quad));
 	z = (quad *) new(sizeof(quad));
-
+	
 	x->type = QUAD_SE;
 	x->value.se = se;
+	*/
 	y->type = QUAD_MODE;
 	y->mode = current->u.eParameter.mode;
 	z->type = QUAD_EMPTY;

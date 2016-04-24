@@ -51,44 +51,44 @@ void define_routines(void)
     endFunctionHeader(se, typeVoid);
 	closeScope();
 
-	name = "WRITE_INT";
+	name = "writeInteger";
 	se = newFunction(name);
 	openScope();
 	newParameter("par1", typeInteger, PASS_BY_VALUE, se);
-	newParameter("par2", typeInteger, PASS_BY_VALUE, se);
+	//newParameter("par2", typeInteger, PASS_BY_VALUE, se);
     endFunctionHeader(se, typeVoid);
 	closeScope();
 
-	name = "WRITE_BOOL";
+	name = "writeBoolean";
 	se = newFunction(name);
 	openScope();
 	newParameter("par1", typeBoolean, PASS_BY_VALUE, se);
-	newParameter("par2", typeInteger, PASS_BY_VALUE, se);
+	//newParameter("par2", typeInteger, PASS_BY_VALUE, se);
     endFunctionHeader(se, typeVoid);
 	closeScope();
 
-	name = "WRITE_CHAR";
+	name = "writeChar";
 	se = newFunction(name);
 	openScope();
 	newParameter("par1", typeChar, PASS_BY_VALUE, se);
-	newParameter("par2", typeInteger, PASS_BY_VALUE, se);
+	//newParameter("par2", typeInteger, PASS_BY_VALUE, se);
     endFunctionHeader(se, typeVoid);
 	closeScope();
 
-	name = "WRITE_REAL";
+	name = "writeReal";
 	se = newFunction(name);
 	openScope();
 	newParameter("par1", typeReal, PASS_BY_VALUE, se);
 	newParameter("par2", typeInteger, PASS_BY_VALUE, se);
-	newParameter("par3", typeInteger, PASS_BY_VALUE, se);
+	//newParameter("par3", typeInteger, PASS_BY_VALUE, se);
     endFunctionHeader(se, typeVoid);
 	closeScope();
 
-	name = "WRITE_STRING";
+	name = "writeString";
 	se = newFunction(name);
 	openScope();
 	newParameter("par1", typeIArray(typeChar), PASS_BY_REFERENCE, se);
-	newParameter("par2", typeInteger, PASS_BY_VALUE, se);
+	//newParameter("par2", typeInteger, PASS_BY_VALUE, se);
     endFunctionHeader(se, typeVoid);
 	closeScope();
 	

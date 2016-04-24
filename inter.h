@@ -1,6 +1,9 @@
+#ifndef __INTER_H__
+#define __INTER_H__
+
+#include <stdlib.h>
 #include "symbol.h"
 #include "general.h"
-
 
 /*είδος λειτουργείας τετράδας*/
 typedef enum {
@@ -61,7 +64,10 @@ typedef struct quad_list {
 	quad *x;
 	quad *y;
 	quad *z;
+	unsigned int nestingLevel;
+	SymbolEntry *inFunction;
 	struct quad_list *next;
+	int negOffset;
 }qnode;
 
 /*είδος to σε for expression */
@@ -76,9 +82,10 @@ qnode *current_quad;
 
 /*βοηθητικές συναρτήσεις για επεξεργασία της λίστας τετράδων*/
 void Insert(oper op, quad *x, quad *y, quad *z,qnode **);
-void DisplayQuads(qnode **);
-void printQ(quad *q);
-void printOP(oper op);
+void DisplayQuads(qnode **, FILE *fp);
+void DeleteQuads(qnode **);
+void printQ(FILE *fp, quad *q);
+void printOP(FILE *fp, oper op);
 
 int NEXTQUAD();
 void GENQUAD(oper op, quad *x,quad *y,quad *z);
@@ -101,7 +108,6 @@ qnode *get_qnode(oper op , quad *x, quad *y , quad *z );
  
 void InsertC(quad *tag,condition **, condition **, int quadnumber);
 void DisplayCList(condition **);
-
 
 
 typedef struct stackNEXT {
@@ -170,3 +176,7 @@ void conversion_from_expression_to_condition(Vinfo *d0, Vinfo *d1);
 void intercode_arithmetic_op_givenRET(Vinfo *dd, Vinfo *d1, Vinfo *d3, oper op);
 
 void initialize_array_to_zero(SymbolEntry *se);
+
+SymbolEntry *main_program;
+Scope *sc;
+#endif /*define __INTER_H__*/

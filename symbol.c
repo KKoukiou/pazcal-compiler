@@ -30,7 +30,7 @@
 #include "general.h"
 #include "error.h"
 #include "symbol.h"
-
+#include "inter.h"
 /* ---------------------------------------------------------------------
    ------------- Καθολικές μεταβλητές του πίνακα συμβόλων --------------
    --------------------------------------------------------------------- */
@@ -165,7 +165,7 @@ void destroySymbolTable ()
     delete(hashTable);
 }
 
-void openScope ()
+Scope *openScope ()
 {
     Scope * newScope = (Scope *) new(sizeof(Scope));
 
@@ -177,25 +177,27 @@ void openScope ()
         newScope->nestingLevel = 1;
     else
         newScope->nestingLevel = currentScope->nestingLevel + 1;
-    
+  	 
     currentScope = newScope;
+	return newScope;
+
 }
 
 void closeScope ()
 {
     SymbolEntry * e = currentScope->entries;
-    Scope       * t = currentScope;
+    //Scope       * t = currentScope;
     
     while (e != NULL) {
         SymbolEntry * next = e->nextInScope;
         
         hashTable[e->hashValue] = e->nextHash;
-        //destroyEntry(e);//must uncomment
+        //destroyEntry(e); 
         e = next;
     }
-    
+
     currentScope = currentScope->parent;
-    delete(t);
+    //delete(t);
 }
 
 static void insertEntry (SymbolEntry * e)
@@ -603,6 +605,8 @@ void destroyType (Type type)
     }
 }
 
+/*I have changed this function from the original 
+*/
 unsigned int sizeOfType (Type type)
 {
     switch (type->kind) {
@@ -610,10 +614,13 @@ unsigned int sizeOfType (Type type)
             internal("Type void has no size");
             break;
         case TYPE_INTEGER:
+			return 2;
         case TYPE_IARRAY:
+			break;
         case TYPE_POINTER:
             return 2;
         case TYPE_BOOLEAN:
+			return 1;
         case TYPE_CHAR:
             return 1;
         case TYPE_REAL:

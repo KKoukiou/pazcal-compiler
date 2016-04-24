@@ -203,7 +203,7 @@ extern const Type typeReal;
 void          initSymbolTable    (unsigned int size);
 void          destroySymbolTable (void);
 
-void          openScope          (void);
+Scope *       openScope          (void);
 void          closeScope         (void);
 
 SymbolEntry * newVariable        (const char * name, Type type);

@@ -5,7 +5,9 @@
 #include "inter.h"
 #include "symbol.h"
 #include "routines.h"
+#include "assembly.h"
 
+extern FILE *yyin;
 void yyerror (const char *msg);
 int yylex();
 
@@ -38,6 +40,8 @@ int array;
 condition *for_list;
 SymbolEntry *array_init;
 int offset;
+int *negOffset;
+char *write_option;
 /*
 is 1 if we are inside a routine
 */
@@ -131,6 +135,7 @@ bool is_global = 1;
 %type<to> 		to
 %type<t> 		matrixD
 %type<headNEXT> local_def
+%type<n> 		write
 %%
 
 
@@ -319,7 +324,7 @@ matrixD 	:/*empty*/
 		{
 			if (!$2.calculated)
 				yyerror("IndexError: Array index must be a constant value");
-			if ($2.calculated && (!$2.value > 0))
+			if ($2.calculated && !($2.value > 0))
 				yyerror("IndexError: Array index out of range");
 			offset = $2.value;
 		}
@@ -390,13 +395,18 @@ proc 	:"PROC" "id" '('
 
 			/*Quadruples code*/
 			quad *x = (quad *) new(sizeof(quad));
+			quad *y = (quad *) new(sizeof(quad));
+			quad *z = (quad *) new(sizeof(quad));
+
 			x->value.se = f_se;
 			x->type = QUAD_SE;
-			quad *y = (quad *) new(sizeof(quad));
 			y->type = QUAD_EMPTY;
-			quad *z = (quad *) new(sizeof(quad));
 			z->type = QUAD_EMPTY;
 			GENQUAD(OP_UNIT, x, y, z);
+			
+			negOffset = &current_quad->negOffset;
+			*negOffset = START_NEGATIVE_OFFSET;
+
 			/*End Quadruples code*/
 		}
 		;
@@ -421,6 +431,10 @@ func		:"FUNC" type "id" '('
 			quad *z = (quad *) new(sizeof(quad));
 			z->type = QUAD_EMPTY;
 			GENQUAD(OP_UNIT, x, y, z);
+			
+			negOffset = &current_quad->negOffset;
+			*negOffset = START_NEGATIVE_OFFSET;
+
 			/*End Quadruples code*/
 		}
 		;
@@ -508,6 +522,7 @@ program_header	:"PROGRAM" "id" '(' ')'
 			f_se= newFunction($2);
 			openScope();
 
+			main_program = f_se;
 			/*Quadruples code*/
 			quad *x = (quad *) new(sizeof(quad));
 			x->value.se = f_se;
@@ -517,10 +532,13 @@ program_header	:"PROGRAM" "id" '(' ')'
 			quad *z = (quad *) new(sizeof(quad));
 			z->type = QUAD_EMPTY;
 			GENQUAD(OP_UNIT, x, y, z);
+		
+			negOffset = &current_quad->negOffset;
+			*negOffset = START_NEGATIVE_OFFSET;
 			/*End Quadruples code*/
 		}
 		;
-program 	:program_header
+program :program_header
 		{
 			is_global = 0;
 		}
@@ -1443,6 +1461,7 @@ expr 	:"int_const"
 				quad *x = (quad *) new(sizeof(quad));
 				quad *y = (quad *) new(sizeof(quad));
 				quad *z = (quad *) new(sizeof(quad));
+
 				x->value.se = $2.se;
 				x->type = QUAD_POINTER;
 				y->type = QUAD_EMPTY;
@@ -1479,6 +1498,7 @@ expr 	:"int_const"
 				quad *x = (quad *) new(sizeof(quad));
 				quad *y = (quad *) new(sizeof(quad));
 				quad *z = (quad *) new(sizeof(quad));
+
 				x->value.se = $2.se;
 				x->type = QUAD_POINTER;
 				y->type = QUAD_EMPTY;
@@ -1515,6 +1535,7 @@ expr 	:"int_const"
 				quad *x = (quad *) new(sizeof(quad));
 				quad *y = (quad *) new(sizeof(quad));
 				quad *z = (quad *) new(sizeof(quad));
+
 				x->value.se = $1.se;
 				x->type = QUAD_POINTER;
 				y->type = QUAD_EMPTY;
@@ -1547,6 +1568,7 @@ expr 	:"int_const"
 				quad *x = (quad *) new(sizeof(quad));
 				quad *y = (quad *) new(sizeof(quad));
 				quad *z = (quad *) new(sizeof(quad));
+
 				x->value.se = $4.se;
 				x->type = QUAD_POINTER;
 				y->type = QUAD_EMPTY;
@@ -1557,7 +1579,7 @@ expr 	:"int_const"
 				GENQUAD(OP_assign, x, y, z);
 			}
 
-			if ($4.se != NULL || $1.calculated)
+			if ($4.se != NULL || $4.calculated)
 				conversion_from_expression_to_condition(&$4, &$4);
 
 			if (!($<v>3.calculated == 1 && $4.value == 0)){
@@ -1589,6 +1611,7 @@ expr 	:"int_const"
 				quad *x = (quad *) new(sizeof(quad));
 				quad *y = (quad *) new(sizeof(quad));
 				quad *z = (quad *) new(sizeof(quad));
+
 				x->value.se = $1.se;
 				x->type = QUAD_POINTER;
 				y->type = QUAD_EMPTY;
@@ -1599,7 +1622,7 @@ expr 	:"int_const"
 				GENQUAD(OP_assign, x, y, z);
 			}
 
-			if ($1.se != NULL)
+			if ($1.se != NULL || $1.calculated)
 				conversion_from_expression_to_condition(&$1, &$1);
 
 			$<v>$.calculated = 0;
@@ -1622,6 +1645,7 @@ expr 	:"int_const"
 				quad *x = (quad *) new(sizeof(quad));
 				quad *y = (quad *) new(sizeof(quad));
 				quad *z = (quad *) new(sizeof(quad));
+
 				x->value.se = $4.se;
 				x->type = QUAD_POINTER;
 				y->type = QUAD_EMPTY;
@@ -1632,7 +1656,7 @@ expr 	:"int_const"
 				GENQUAD(OP_assign, x, y, z);
 			}
 
-			if ($4.se != NULL)
+			if ($4.se != NULL || $4.calculated)
 				conversion_from_expression_to_condition(&$4, &$4);
 
 			if ($4.type == typeBoolean) {
@@ -1640,7 +1664,6 @@ expr 	:"int_const"
 				if ($4.calculated == 1 && $4.value == 1) {
 					$<v>3.value = 1;
 					$<v>3.calculated = 1;
-					break;
 				}
 				else if ($4.calculated == 1 && $4.value == 1 &&
 						 $1.calculated == 1 && $1.value == 1) {
@@ -1653,6 +1676,11 @@ expr 	:"int_const"
 			/*Quadruples Code*/
 			$$.headFALSE = $4.headFALSE;
 			$$.headTRUE = MERGE(&$1.headTRUE, &$4.headTRUE);
+			printf("List true: ");
+			DisplayCList(&$$.headTRUE);
+			printf("List false: ");
+			DisplayCList(&$$.headFALSE);
+			
 			/*End Quadruples Code*/
 
 			$$.calculated = $1.calculated && $4.calculated;
@@ -1771,11 +1799,11 @@ call 	:"id" '('
 			$$ = f_se->u.eFunction.resultType;
 
 			/*Quadruples code*/
-			quad *x = (quad *) new(sizeof(quad));
-			quad *y = (quad *) new(sizeof(quad));
-			quad *z = (quad *) new(sizeof(quad));
-
 			if (!equalType($$, typeVoid)) {
+				quad *x = (quad *) new(sizeof(quad));
+				quad *y = (quad *) new(sizeof(quad));
+				quad *z = (quad *) new(sizeof(quad));
+
 				PushSE(call_res, &call_result_stack);
 				call_res = newTemporary($$);
 				x->type = QUAD_SE;
@@ -1787,10 +1815,10 @@ call 	:"id" '('
 				z->type = QUAD_EMPTY;
 				GENQUAD(OP_PAR, x, y, z);
 			}
+			quad *x = (quad *) new(sizeof(quad));
+			quad *y = (quad *) new(sizeof(quad));
+			quad *z = (quad *) new(sizeof(quad));
 
-			x = (quad *) new(sizeof(quad));
-			y = (quad *) new(sizeof(quad));
-			z = (quad *) new(sizeof(quad));
 			x->type = QUAD_EMPTY;
 			y->type = QUAD_EMPTY;
 			z->type = QUAD_SE;
@@ -1864,12 +1892,15 @@ args	:/*empty*/
 		;
 block 		:'{'
 		{
-			openScope();
+			sc = openScope();
+			
 		}
 		inner_block '}'
 		{
+			*negOffset = (*negOffset) + currentScope->negOffset;	
 			closeScope();
 			$$ = $3;
+				
 		}
 		;
 inner_block	:/*empty*/
@@ -1985,6 +2016,7 @@ stmt		:';'
 			quad *x = (quad *) new(sizeof(quad));
 			quad *y = (quad *) new(sizeof(quad));
 			quad *z = (quad *) new(sizeof(quad));
+
 			if ($1.type->kind == TYPE_POINTER)
 				x->type = QUAD_POINTER;
 			else
@@ -2040,6 +2072,7 @@ stmt		:';'
 				quad *x = (quad *) new(sizeof(quad));
 				quad *y = (quad *) new(sizeof(quad));
 				quad *z = (quad *) new(sizeof(quad));
+
 				x->value.se = $3.se;
 				x->type = QUAD_POINTER;
 				y->type = QUAD_EMPTY;
@@ -2091,6 +2124,7 @@ stmt		:';'
 				quad *x = (quad *) new(sizeof(quad));
 				quad *y = (quad *) new(sizeof(quad));
 				quad *z = (quad *) new(sizeof(quad));
+
 				x->value.se = $4.se;
 				x->type = QUAD_POINTER;
 				y->type = QUAD_EMPTY;
@@ -2118,6 +2152,7 @@ stmt		:';'
 			quad *x = (quad *) new(sizeof(quad));
 			quad *y = (quad *) new(sizeof(quad));
 			quad *z = (quad *) new(sizeof(quad));
+			
 			x->type = QUAD_EMPTY;
 			y->type = QUAD_EMPTY;
 			z->type = QUAD_TAG;
@@ -2155,6 +2190,7 @@ stmt		:';'
 		quad *x = (quad *) new(sizeof(quad));
 		quad *y = (quad *) new(sizeof(quad));
 		quad *z = (quad *) new(sizeof(quad));
+
 		z->type = QUAD_SE;
 		z->value.se = for_counter;
 		x->type = QUAD_INTEGER;
@@ -2181,10 +2217,6 @@ stmt		:';'
 			/*Quadruples code*/
 			for_backQUAD = quadNext;
 
-			quad *x = (quad *) new(sizeof(quad));
-			quad *y = (quad *) new(sizeof(quad));
-			quad *z = (quad *) new(sizeof(quad));
-
 			Vinfo v1;
 			Vinfo v2;
 			Vinfo vv;
@@ -2199,9 +2231,9 @@ stmt		:';'
 			$<headNEXT>$= vv.headFALSE;
 
 			/*i = $1*/
-			x = (quad *) new(sizeof(quad));
-			y = (quad *) new(sizeof(quad));
-			z = (quad *) new(sizeof(quad));
+			quad *x = (quad *) new(sizeof(quad));
+			quad *y = (quad *) new(sizeof(quad));
+			quad *z = (quad *) new(sizeof(quad));
 
 			x->type = QUAD_SE;
 			x->value.se = for_counter;
@@ -2242,9 +2274,6 @@ stmt		:';'
 
 			/*Quadruples code*/
 			_BACKPATCH(&$13, for_backQUAD);
-			x = (quad *) new(sizeof(quad));
-			y = (quad *) new(sizeof(quad));
-			z = (quad *) new(sizeof(quad));
 			x->type = QUAD_EMPTY;
 			y->type = QUAD_EMPTY;
 			z->type = QUAD_TAG;
@@ -2291,14 +2320,18 @@ stmt		:';'
 		|"return" ';'
 		{
 			/*Quadruples code*/
-			$$= EMPTYLIST();
+			$$ = EMPTYLIST();
 			quad *x = (quad *) new(sizeof(quad));
 			quad *y = (quad *) new(sizeof(quad));
 			quad *z = (quad *) new(sizeof(quad));
+
 			x->type = QUAD_EMPTY;
 			y->type = QUAD_EMPTY;
 			z->type = QUAD_EMPTY;
 			GENQUAD(OP_RET,x,y,z);
+			
+			/*Need that for assembly code*/
+			current_quad->inFunction = f_se;
 			/*End Quadruples code*/
 		}
 		|"return" expr ';'
@@ -2349,9 +2382,57 @@ stmt		:';'
 		{
 			$$ = $1;	
 		}
-		|write '('format  more_format ')' ';'
+		|write '('format 
+		{
+			write_option = $1;
+			if (strcmp($1, "WRITESP") == 0 || strcmp($1, "WRITESPLN") == 0){
+			SymbolEntry *fe = lookupEntry("writeChar", LOOKUP_ALL_SCOPES, false);
+            SymbolEntry *currentA = fe->u.eFunction.firstArgument;
+
+            Vinfo a;
+            a.type = typeChar;
+            a.calculated = 1;
+            a.value = ' ';
+            intercode_PAR_op(&currentA, &a);
+
+            quad *x = (quad *) new(sizeof(quad));
+            quad *y = (quad *) new(sizeof(quad));
+            quad *z = (quad *) new(sizeof(quad));
+
+            x->type = QUAD_EMPTY;
+            y->type = QUAD_EMPTY;
+            z->type = QUAD_SE;
+            z->value.se = fe;
+            GENQUAD(OP_CALL, x, y, z);
+			}	
+		}
+		more_format ')' ';'
 		{
 			$$ = EMPTYLIST();;
+				
+			if (strcmp($1, "WRITELN") == 0 || strcmp($1, "WRITESPLN") == 0){
+			SymbolEntry *fe = lookupEntry("writeChar", LOOKUP_ALL_SCOPES, false);
+			if (fe == NULL ) 
+				yyerror("Not found\n");
+            SymbolEntry *currentA = fe->u.eFunction.firstArgument;
+
+            Vinfo a;
+            a.type = typeChar;
+            a.calculated = 1;
+            a.value = '\n';
+            intercode_PAR_op(&currentA, &a);
+			
+            quad *x = (quad *) new(sizeof(quad));
+            quad *y = (quad *) new(sizeof(quad));
+            quad *z = (quad *) new(sizeof(quad));
+
+            x->type = QUAD_EMPTY;
+            y->type = QUAD_EMPTY;
+            z->type = QUAD_SE;
+            z->value.se = fe;
+            GENQUAD(OP_CALL, x, y, z);
+			}
+			
 		}
 		|write '(' ')' ';'
 		{
@@ -2383,14 +2464,35 @@ thenclause:	/*empty*/
 		}
 		;
 more_format: /*empty*/
+		|',' format 
 		{
+		if (strcmp(write_option, "WRITESP") == 0 || strcmp(write_option, "WRITESPLN") == 0){
+			SymbolEntry *fe = lookupEntry("writeChar", LOOKUP_ALL_SCOPES, false);
+            SymbolEntry *currentA = fe->u.eFunction.firstArgument;
+
+            Vinfo a;
+            a.type = typeChar;
+            a.calculated = 1;
+            a.value = ' ';
+            intercode_PAR_op(&currentA, &a);
+
+            quad *x = (quad *) new(sizeof(quad));
+            quad *y = (quad *) new(sizeof(quad));
+            quad *z = (quad *) new(sizeof(quad));
+
+            x->type = QUAD_EMPTY;
+            y->type = QUAD_EMPTY;
+            z->type = QUAD_SE;
+            z->value.se = fe;
+            GENQUAD(OP_CALL, x, y, z);
+		}	
 		}
-		|',' format more_format 		
+		more_format 		
 		;
-write	:"WRITE"
-		|"WRITELN"
-		|"WRITESP"
-		|"WRITESPLN"
+write	:"WRITE" 	{ $$ = "WRITE";		}
+		|"WRITELN"	{ $$ = "WRITELN";	}
+		|"WRITESP"	{ $$ = "WRITESP";	}
+		|"WRITESPLN"{ $$ = "WRITESPLN";	}
 		;
 format	:expr 
 		{	
@@ -2399,32 +2501,36 @@ format	:expr
 			
 			if (equalType($1.type, typeInteger) ||
 				equalType($1.type, typePointer(typeInteger)))
-				fe = lookupEntry("WRITE_INT", LOOKUP_ALL_SCOPES, false);
+				fe = lookupEntry("writeInteger", LOOKUP_ALL_SCOPES, false);
 			else if (equalType($1.type, typeBoolean) ||
 				equalType($1.type, typePointer(typeBoolean)))
-				fe = lookupEntry("WRITE_BOOL", LOOKUP_ALL_SCOPES, false);
+				fe = lookupEntry("writeBoolean", LOOKUP_ALL_SCOPES, false);
 			else if (equalType($1.type, typeChar) || 
 				equalType($1.type, typePointer(typeChar)))
-				fe = lookupEntry("WRITE_CHAR", LOOKUP_ALL_SCOPES, false);
+				fe = lookupEntry("writeChar", LOOKUP_ALL_SCOPES, false);
 			else if (equalType($1.type, typeReal) || 
 				equalType($1.type, typePointer(typeReal)))
-				fe = lookupEntry("WRITE_REAL", LOOKUP_ALL_SCOPES, false);
+				fe = lookupEntry("writeReal", LOOKUP_ALL_SCOPES, false);
 			else if (($1.type->kind == TYPE_ARRAY || $1.type->kind ==
 				TYPE_IARRAY) && equalType($1.type->refType,	typeChar))
-				fe = lookupEntry("WRITE_STRING", LOOKUP_ALL_SCOPES, false);
+				fe = lookupEntry("writeString", LOOKUP_ALL_SCOPES, false);
 			else 
 				yyerror("Unknown type");
+			if (fe == NULL) 
+				yyerror("Unknown function name \n");
 			/*Quadruples code*/
             currentA = fe->u.eFunction.firstArgument;
 			intercode_PAR_op(&currentA, &$1);
-            currentA = currentA->u.eParameter.next;
-			
+            
+			/*
+			currentA = currentA->u.eParameter.next;
 			Vinfo a;
 			a.type = typeInteger;
 			a.calculated = 1;
 			a.value = 0;
 			intercode_PAR_op(&currentA, &a);
-			
+			*/
+
             quad *x = (quad *) new(sizeof(quad));
             quad *y = (quad *) new(sizeof(quad));
             quad *z = (quad *) new(sizeof(quad));
@@ -2472,8 +2578,32 @@ void yyerror (const char *msg)
 	ERROR("parser said, %s", msg);
 }
 
-int main (void)
+int main (int argc, char **argv)
 {
+	FILE *fp;
+	FILE *quadruples_out;
+	FILE *assembly_out;
+	if (strcmp(argv[1], "-f") ==0) {
+		fp = stdin;	
+		assembly_out = stdout;
+		quadruples_out = fopen("a.imm","w");
+	}
+	else if (strcmp(argv[1], "-i") ==0) {
+		fp = stdin;	 	
+		assembly_out = fopen("a.asm","w");
+		quadruples_out = stdout;
+	}
+	else {
+		fp = fopen(argv[1],"r");
+		if(!fp)
+		{
+			printf("couldn't open file for reading\n");
+			exit(0);
+		}
+		assembly_out = fopen("a.asm","w");
+		quadruples_out = fopen("a.imm","w");
+	}
+	
 	se_stack = NULL;
 	l_value_stack = NULL;
 	top = NULL;
@@ -2483,12 +2613,18 @@ int main (void)
 	initSymbolTable(256);
 	openScope();
 	define_routines();
+	yyin = fp;
 	yyparse();
+	fclose(fp);
 	closeScope();
 	destroySymbolTable();
 
 	printf("\n\n");
-	DisplayQuads(&head_quad);
+	DisplayQuads(&head_quad, quadruples_out);
+
+	printf("\n\n");
+	Quads_to_Assembly(&head_quad, assembly_out);
+	DeleteQuads(&head_quad);
 	return 0;
 }
 

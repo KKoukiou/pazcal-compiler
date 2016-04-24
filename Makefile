@@ -22,12 +22,16 @@ lexer.o: lexer.c parser.h
 symbol.o   : symbol.c symbol.h general.h error.h
 
 inter.o : inter.c inter.h symbol.h general.h error.h 
+
 routines.o: routines.c routines.h symbol.h 
+
+assembly.o : assembly.c assembly.h symbol.h general.h inter.h error.h
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
 
-compiler: lexer.o parser.o symbol.o error.o general.o inter.o routines.o 
+compiler: lexer.o parser.o symbol.o error.o general.o inter.o routines.o\
+assembly.o 
 	$(CC) $(CFLAGS) -o compiler $^
 
 clean:
