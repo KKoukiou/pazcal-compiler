@@ -1808,10 +1808,8 @@ call 	:"id" '('
 				call_res = newTemporary($$);
 				x->type = QUAD_SE;
 				x->value.se = call_res;
-				x->type =QUAD_MODE;
-				x->mode = RET;
-				y->type = QUAD_SE;
-				y->value.se = call_res;
+				y->type = QUAD_MODE;
+				y->mode = RET;
 				z->type = QUAD_EMPTY;
 				GENQUAD(OP_PAR, x, y, z);
 			}

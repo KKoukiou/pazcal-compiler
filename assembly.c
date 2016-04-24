@@ -26,43 +26,12 @@ void Quads_to_Assembly(qnode **head, FILE *f) {
 		fprintf(fp, "xseg\tsegment public 'code'\n"
 				"\tassume\tcs:xseg, ds:xseg, ss:xseg\n"
 				"\torg\t100h\n"
-				"\tmain\tproc near\n"
+				"main\tproc near\n"
 				"\tcall\tnear ptr %s\n"
 				"\tmov\tax, 4C00h\n"
 				"\tint\t21h\n"
-				"\tmain\tendp\n", MainName);
+				"main\tendp\n\n", MainName);
 		free(MainName);
-		fprintf(fp, //"\textrn\t_putchar:proc\n"
-					//"\textrn\t_puts:proc\n"
-					"\textrn\t_writeInteger:proc\n"
-					"\textrn\t_writeBoolean:proc\n"
-					"\textrn\t_writeChar:proc\n"
-					"\textrn\t_writeReal:proc\n"
-					"\textrn\t_writeString:proc\n"
-					"\textrn\t_READ_INT:proc\n"
-					"\textrn\t_READ_BOOL:proc\n"
-					"\textrn\t_READ_CHAR:proc\n"
-					"\textrn\t_READ_REAL:proc\n"
-					"\textrn\t_READ_STRING:proc\n"
-					"\textrn\t_abs:proc\n"
-					"\textrn\t_fabs:proc\n"
-					"\textrn\t_sqrt:proc\n"
-					"\textrn\t_sin:proc\n"
-					"\textrn\t_cos:proc\n"
-					"\textrn\t_tan:proc\n"
-					"\textrn\t_arctan:proc\n"
-					"\textrn\t_exp:proc\n"
-					"\textrn\t_ln:proc\n"
-					"\textrn\t_pi:proc\n"
-					"\textrn\t_trunc:proc\n"
-					"\textrn\t_round:proc\n"
-					"\textrn\t_TRUNC:proc\n"
-					"\textrn\t_ROUND:proc\n"
-					//"\textrn\t_strlen:proc\n"
-					//"\textrn\t_strcmp:proc\n"
-					//"\textrn\t_strcpy:proc\n"
-					//"\textrn\t_strcat:proc\n"
-					);
         if (temp == NULL)
                 printf("\nThe list is empty!\n");
         else {
@@ -77,7 +46,7 @@ void Quads_to_Assembly(qnode **head, FILE *f) {
 				{
 					
 					char *nm = name(x);
-					fprintf(fp, "\t%s proc near\n"
+					fprintf(fp, "%s proc near\n"
 							"\tpush\tbp\n"
 							"\tmov\tbp, sp\n"
 							"\tsub\tsp, %d\n", nm, -temp->negOffset);
@@ -167,26 +136,43 @@ void Quads_to_Assembly(qnode **head, FILE *f) {
 								"\tmov\tsi, sp\n"
 								"\tmov\tbyte ptr [si], al\n");
 						} 
+						else fprintf(fp, "Error 1");
 					}
 					else if (y->mode == PASS_BY_REFERENCE || y->mode == RET) {
-					loadAddr("si", x, temp);
+						loadAddr("si", x, temp);
 						fprintf(fp, "\tpush\tsi\n");
 					}
 					else {
-						fprintf(fp, "Error\n");
+						fprintf(fp, "Error 2\n");
 						return;
 					}
 					break;
 				}
 				case OP_RET:
 				{	
-						char *end = endof(temp->inFunction, temp->nestingLevel);
-						fprintf(fp, "\tjmp %s\n", end);
-						free(end);
+					char *end = endof(temp->inFunction, temp->nestingLevel);
+					fprintf(fp, "\tjmp %s\n", end);
+					free(end);
 					break;
 				}
 				case OP_RETV:
+				{	
+					if (x->type == QUAD_INTEGER || (x->type == QUAD_SE &&
+						equalType(x->value.se->u.eVariable.type, typeInteger))) {
+						fprintf(fp, "\tmov\tsi, word ptr [bp+6]\n");	// Address of result
+						load("ax", x, temp);
+						fprintf(fp, "\tmov\tword ptr [si], ax\n"); // store it
+					}
+					else if (x->type == QUAD_CHAR || x->type == QUAD_BOOL || 
+						(x->type == QUAD_SE && 
+						(equalType(x->value.se->u.eVariable.type, typeChar) ||
+						equalType(x->value.se->u.eVariable.type, typeBoolean)))) {
+						fprintf(fp, "\tmov\tsi, byte ptr [bp+6]\n");	// Address of result
+						load("al", x, temp);
+						fprintf(fp, "\tmov\tbyte ptr [si], al\n"); // store it
+					}	
 					break;
+				}
 				case OP_eq:
 				{
 					load("ax", x, temp);
@@ -347,10 +333,43 @@ void Quads_to_Assembly(qnode **head, FILE *f) {
 				temp = temp->next;
 			}
         }
+		fprintf(fp, //"extrn\t_putchar:proc\n"
+					//"extrn\t_puts:proc\n"
+					"extrn\t_writeInteger:proc\n"
+					"extrn\t_writeBoolean:proc\n"
+					"extrn\t_writeChar:proc\n"
+					"extrn\t_writeReal:proc\n"
+					"extrn\t_writeString:proc\n"
+					"extrn\t_READ_INT:proc\n"
+					"extrn\t_READ_BOOL:proc\n"
+					"extrn\t_READ_CHAR:proc\n"
+					"extrn\t_READ_REAL:proc\n"
+					"extrn\t_READ_STRING:proc\n"
+					"extrn\t_abs:proc\n"
+					"extrn\t_fabs:proc\n"
+					"extrn\t_sqrt:proc\n"
+					"extrn\t_sin:proc\n"
+					"extrn\t_cos:proc\n"
+					"extrn\t_tan:proc\n"
+					"extrn\t_arctan:proc\n"
+					"extrn\t_exp:proc\n"
+					"extrn\t_ln:proc\n"
+					"extrn\t_pi:proc\n"
+					"extrn\t_trunc:proc\n"
+					"extrn\t_round:proc\n"
+					"extrn\t_TRUNC:proc\n"
+					"extrn\t_ROUND:proc\n"
+					//"extrn\t_strlen:proc\n"
+					//"extrn\t_strcmp:proc\n"
+					//"extrn\t_strcpy:proc\n"
+					//"extrn\t_strcat:proc\n"
+					);
+
+		print_strings(fp, head_str);
+
 		fprintf(fp, "xseg ends\n"
 					"\tend\tmain\n");
-		print_strings(fp, head_str);
-}
+		}
 
 void getAR(quad * a, qnode *current){
 	int n_cur = current->nestingLevel;
@@ -367,20 +386,20 @@ void updateAL(SymbolEntry *p, SymbolEntry *x){
 	int n_p = p->nestingLevel;
 	int n_x = x->nestingLevel;
 	if (n_p < n_x) {
-		fprintf(fp, "push bp\n");
+		fprintf(fp, "push\tbp\n");
 		return;
 	}
 	else if (n_p == n_x) {
-		fprintf(fp, "push word ptr [bp+4]\n");
+		fprintf(fp, "push\tword ptr [bp+4]\n");
 		return;
 	}
 	else {
-		fprintf(fp, "mov si, word ptr [bp+4]\n");
+		fprintf(fp, "mov\tsi, word ptr [bp+4]\n");
 		int rep = n_p - n_x-1;
 		int i;
 		for(i=0;i<rep;++i) 
-			fprintf(fp, "mov si, word ptr [si+4]\n");
-		fprintf(fp, "push word ptr [si+4]\n");
+			fprintf(fp, "mov\tsi, word ptr [si+4]\n");
+		fprintf(fp, "push\tword ptr [si+4]\n");
 	}
 }
 
@@ -396,15 +415,21 @@ void load(char *R, quad *a, qnode *current){
 			sz = "word";
 		else if(sizeOfType(a->value.se->u.eVariable.type) == 1)
 			sz = "byte";
+		/*CHECK THIS HACK LATER*/
+		if (a->value.se->nestingLevel == 2) 
+			a->value.se->nestingLevel = 3;
+		char *sign;
+		if(a->value.se->u.eParameter.offset >= 0) sign="+";
+		else sign="";
 		if(n_cur == a->value.se->nestingLevel)
 			if(a->value.se->entryType == ENTRY_PARAMETER &&
 				a->value.se->u.eParameter.mode == PASS_BY_REFERENCE){
-				fprintf(fp, "mov\tsi, word ptr [bp%d]\n",
-				a->value.se->u.eParameter.offset);
+				fprintf(fp, "mov\tsi, word ptr [bp%s%d]\n",
+				sign,a->value.se->u.eParameter.offset);
 				fprintf(fp, "\tmov\t%s, %s ptr [si]\n", R, sz);
 			}
-			else fprintf(fp, "\tmov\t%s, %s ptr [bp%d]\n", R,
-				sz, a->value.se->u.eVariable.offset);
+			else fprintf(fp, "\tmov\t%s, %s ptr [bp%s%d]\n", R,
+				sz, sign ,a->value.se->u.eVariable.offset);
 		else 
 			if(a->value.se->entryType == ENTRY_PARAMETER && 
 				a->value.se->u.eParameter.mode == PASS_BY_REFERENCE){
@@ -460,15 +485,22 @@ void store(char *R, quad *a, qnode *current){
 			sz = "word";
 		else if(sizeOfType(a->value.se->u.eVariable.type) == 1)
 			sz = "byte";
+		/*CHECK THIS HACK LATER*/
+		if (a->value.se->nestingLevel == 2) 
+			a->value.se->nestingLevel = 3;
+		char *sign;
+		if(a->value.se->u.eParameter.offset >= 0) sign="+";
+		else sign="";
+
 		if(n_cur == a->value.se->nestingLevel) {
 			if(a->value.se->entryType == ENTRY_PARAMETER &&
 				a->value.se->u.eParameter.mode == PASS_BY_REFERENCE){
-				fprintf(fp, "\tmov\tsi, word ptr [bp+%d]\n",
-				a->value.se->u.eParameter.offset);
+				fprintf(fp, "\tmov\tsi, word ptr [bp%s%d]\n",
+				sign, a->value.se->u.eParameter.offset);
 				fprintf(fp, "\tmov\t%s ptr [si], %s\n", sz, R);
 			}
-			else fprintf(fp, "\tmov\t%s ptr [bp%d], %s\n",
-				sz, a->value.se->u.eVariable.offset, R);
+			else fprintf(fp, "\tmov\t%s ptr [bp%s%d], %s\n",
+				sz, sign, a->value.se->u.eVariable.offset, R);
 		}
 		else {
 			if(a->value.se->entryType == ENTRY_PARAMETER && 
