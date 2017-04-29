@@ -91,7 +91,7 @@ C ([^'"\\\n]|\\.)
 
 {DEL} 				{return yytext[0]; }
 (\')({L}|{D}|{DEL}|{C})(\') 			{ 	
-											printf("%c%c\n", yytext[1],
+											fprintf(stdout, "%c%c\n", yytext[1],
 											yytext[2]);
 											if (yytext[1] == '\\') {
 												if (yytext[2] == 'n')	

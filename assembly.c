@@ -33,7 +33,7 @@ void Quads_to_Assembly(qnode **head, FILE *f) {
 				"main\tendp\n\n", MainName);
 		free(MainName);
         if (temp == NULL)
-                printf("\nThe list is empty!\n");
+                fprintf(stdout, "\nThe list is empty!\n");
         else {
        		while (temp != NULL) {	
 				fprintf(fp, "@%d:\n", temp->n);
@@ -575,7 +575,7 @@ void loadAddr(char *R, quad *a, qnode *current){
 		load(R, a, current);
 		break;
 	default:
-		printf("Could not loadAddr for such type\n");
+		fprintf(stdout, "Could not loadAddr for such type\n");
 	}
 }
 char *endof(SymbolEntry *x, int n)

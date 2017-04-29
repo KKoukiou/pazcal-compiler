@@ -176,7 +176,7 @@ const_expr_more :/*empty*/
 					se = newConstant($3, const_expr_type, $5.value);
 				break;
 			default:
-				printf("Only basic types can be constant expressions\n");
+				fprintf(stdout, "Only basic types can be constant expressions\n");
 			}
 		}
 		;
@@ -206,7 +206,7 @@ const_def 	:"const" type {
 					se = newConstant($4, const_expr_type, $6.value);
 				break;
 			default:
-				printf("Only basic types can be constant expressions\n");
+				fprintf(stdout, "Only basic types can be constant expressions\n");
 			}
 		}
 		;
@@ -646,7 +646,7 @@ expr 	:"int_const"
 						$$.strvalue = (char *) $1.se->u.eConstant.value.vString;
 					break;
 				default:
-					printf("Unknown expression type\n");
+					fprintf(stdout, "Unknown expression type\n");
 				}
 			}
 			else 
@@ -1676,9 +1676,9 @@ expr 	:"int_const"
 			/*Quadruples Code*/
 			$$.headFALSE = $4.headFALSE;
 			$$.headTRUE = MERGE(&$1.headTRUE, &$4.headTRUE);
-			printf("List true: ");
+			fprintf(stdout, "List true: ");
 			DisplayCList(&$$.headTRUE);
-			printf("List false: ");
+			fprintf(stdout, "List false: ");
 			DisplayCList(&$$.headFALSE);
 			
 			/*End Quadruples Code*/
@@ -2581,6 +2581,7 @@ int main (int argc, char **argv)
 	FILE *fp;
 	FILE *quadruples_out;
 	FILE *assembly_out;
+    FILE *saved = stdout;
 	if (strcmp(argv[1], "-f") ==0) {
 		fp = stdin;	
 		assembly_out = stdout;
@@ -2595,12 +2596,14 @@ int main (int argc, char **argv)
 		fp = fopen(argv[1],"r");
 		if(!fp)
 		{
-			printf("couldn't open file for reading\n");
+			fprintf(stdout, "couldn't open file for reading\n");
 			exit(0);
 		}
 		assembly_out = fopen("a.asm","w");
 		quadruples_out = fopen("a.imm","w");
 	}
+
+    stdout = fopen("log.txt", "w");
 	
 	se_stack = NULL;
 	l_value_stack = NULL;
@@ -2617,11 +2620,15 @@ int main (int argc, char **argv)
 	closeScope();
 	destroySymbolTable();
 
-	printf("\n\n");
-	DisplayQuads(&head_quad, quadruples_out);
+    fclose(stdout);
+    stdout = saved;
 
-	printf("\n\n");
-	Quads_to_Assembly(&head_quad, assembly_out);
+	if (strcmp(argv[1], "-f") != 0)
+	    DisplayQuads(&head_quad, quadruples_out);
+
+	if (strcmp(argv[1], "-i") != 0)
+	    Quads_to_Assembly(&head_quad, assembly_out);
+
 	DeleteQuads(&head_quad);
 	return 0;
 }

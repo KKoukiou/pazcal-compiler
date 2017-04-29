@@ -35,7 +35,7 @@ assembly.o
 	$(CC) $(CFLAGS) -o compiler $^
 
 clean:
-	$(RM) lexer.c parser.c parser.h parser.output *.o *~
+	$(RM) lexer.c parser.c parser.h parser.output *.o *~ compiler
 
 distclean: clean
 	$(RM) compiler 

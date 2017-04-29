@@ -38,7 +38,7 @@ void _BACKPATCH(condition **head, int q)
 
 	temp = *head;
 	if (temp == NULL)
-		printf("The list is empty\n");
+		fprintf(stdout, "The list is empty\n");
 	else {
 		while (temp != NULL) {
 			temp->n->type = QUAD_TAG;
@@ -101,7 +101,7 @@ qnode *get_qnode(oper op, quad *x, quad *y, quad *z)
 
 	temp = (qnode *)malloc(sizeof(qnode));
 	if (temp == NULL)
-	  printf("\nMemory Cannot be allocated");
+	  fprintf(stdout, "\nMemory Cannot be allocated");
 	temp->n = quadNext;
 	temp->op = op;
 	temp->x = x;
@@ -117,7 +117,7 @@ void DisplayQuads(qnode **head, FILE *fp)
 	qnode *temp;
 	temp = *head;
 	if (temp == NULL)
-			printf("\nThe list is empty!\n");
+			fprintf(stdout, "\nThe list is empty!\n");
 	else {
 			while (temp != NULL) {
 				fprintf(fp, "%d: ", temp->n); printOP(fp, temp->op);
@@ -134,7 +134,7 @@ void DeleteQuads(qnode **head)
 
 	temp = *head;
 	if (temp == NULL)
-			printf("\nThe list successfully deleted!\n");
+			fprintf(stdout, "\nThe list successfully deleted!\n");
 	else {
 			while (temp != NULL) {
 				qnode *aux = temp;
@@ -307,7 +307,7 @@ condition *get_cnode(quad *tag, int quadnumber)
 
 	temp = (condition *) malloc(sizeof(condition));
 	if (temp == NULL)
-	  printf("\nMemory Cannot be allocated");
+	  fprintf(stdout, "\nMemory Cannot be allocated");
 	temp->n = tag;
 	temp->tag = quadnumber;
 	temp->next = NULL;
@@ -320,16 +320,16 @@ void DisplayCList(condition **head)
 	condition *temp;
 
 	temp = *head;
-	printf("DisplayCList:	");
+	fprintf(stdout, "DisplayCList:	");
 	if (temp == NULL)
-			printf("\nThe list is empty!\n");
+			fprintf(stdout, "\nThe list is empty!\n");
 	else {
-		printf("{");
+		fprintf(stdout, "{");
 			while (temp != NULL) {
-				printf("%d,", temp->tag);
+				fprintf(stdout, "%d,", temp->tag);
 				temp = temp->next;
 			}
-			printf("}\n");
+			fprintf(stdout, "}\n");
 	}
 }
 
@@ -354,7 +354,7 @@ node_N *get_node_N(condition *item)
 
 	temp = (node_N *) malloc(sizeof(node_N));
 	if (temp == NULL)
-	printf("\nMemory Cannot be allocated");
+	fprintf(stdout, "\nMemory Cannot be allocated");
 	temp->data = item;
 	temp->next = NULL;
 	return temp;
@@ -399,7 +399,7 @@ node_N *get_node_W(int item)
 
 	temp = (node_N *) malloc(sizeof(node_N));
 	if (temp == NULL)
-	printf("\nMemory Cannot be allocated");
+	fprintf(stdout, "\nMemory Cannot be allocated");
 	temp->while_backQUAD = item;
 	temp->next = NULL;
 	return temp;
@@ -423,14 +423,14 @@ void DisplayWHILE(node_N **head)
 
 	temp = *head;
 	if (temp == NULL)
-		printf("\nThe stack is empty!");
+		fprintf(stdout, "\nThe stack is empty!");
 	else {
-		printf("{");
+		fprintf(stdout, "{");
 		while (temp != NULL) {
-			printf("%d\n", temp->while_backQUAD);
+			fprintf(stdout, "%d\n", temp->while_backQUAD);
 			temp = temp->next;
 		}
-		printf("}");
+		fprintf(stdout, "}");
 	}
 }
 
@@ -450,7 +450,7 @@ node_F *get_node_F(int item, SymbolEntry *se, SymbolEntry *iter)
 	node_F *temp;
 	temp = (node_F *) malloc(sizeof(node_F));
 	if (temp == NULL)
-	  printf("\nMemory Cannot be allocated");
+	  fprintf(stdout, "\nMemory Cannot be allocated");
 	temp->for_backQUAD = item;
 	temp->for_counter = se;
 	temp->for_se = iter;
@@ -656,7 +656,7 @@ void intercode_assign_op(Vinfo *d1, Vinfo *d3)
 			}
 			break;
 		default:
-			printf("Unknown constant expression type\n");
+			fprintf(stdout, "Unknown constant expression type\n");
 		}
 	} else {
 		if (d3->type->kind == TYPE_POINTER)	
@@ -722,7 +722,7 @@ void intercode_PAR_op(SymbolEntry **current_, Vinfo *d1)
 			}
 			break;
 		default:
-			printf("Unknown constant expression type\n");
+			fprintf(stdout, "Unknown constant expression type\n");
 		}
 	} else {
 		if (d1->type->kind == TYPE_POINTER)	
@@ -814,7 +814,7 @@ void intercode_arithmetic_op_givenRET(Vinfo *dd, Vinfo *d1, Vinfo *d3, oper op)
 
 SymbolEntry *conversion_from_condition_to_expression(Vinfo *d3)
 {
-	printf("Conversion from cond to expr\n");
+	fprintf(stdout, "Conversion from cond to expr\n");
 	DisplayCList(&(d3->headTRUE));
 	SymbolEntry *se = newTemporary(typeBoolean);
 
@@ -857,7 +857,7 @@ SymbolEntry *conversion_from_condition_to_expression(Vinfo *d3)
 
 void conversion_from_expression_to_condition(Vinfo *d0, Vinfo *d1)
 {
-	printf("Conversion from expr to cond\n");
+	fprintf(stdout ,"Conversion from expr to cond\n");
 	quad *x ;
 	quad *y ;
 	quad *z ;

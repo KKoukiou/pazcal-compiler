@@ -11,51 +11,51 @@ void printSymbolTable(void)
 
 	scp = currentScope;
 	if (scp == NULL)
-		printf("no scope\n");
+		fprintf(stdout, "no scope\n");
 	else
 		while (scp != NULL) {
-			printf("scope: ");
+			fprintf(stdout, "scope: ");
 			e = scp->entries;
 			while (e != NULL) {
 				if (e->entryType == ENTRY_TEMPORARY)
-					printf("$%d", e->u.eTemporary.number);
+					fprintf(stdout, "$%d", e->u.eTemporary.number);
 				else
-					printf("%s", e->id);
+					fprintf(stdout, "%s", e->id);
 				switch (e->entryType) {
 				case ENTRY_FUNCTION:
-					printf("(");
+					fprintf(stdout, "(");
 					args = e->u.eFunction.firstArgument;
 					while (args != NULL) {
 						printMode(args->u.eParameter.mode);
-						printf("%s : ", args->id);
+						fprintf(stdout, "%s : ", args->id);
 						printType(args->u.eParameter.type);
 						args = args->u.eParameter.next;
 						if (args != NULL)
-							printf("; ");
+							fprintf(stdout, "; ");
 					}
-					printf(") : ");
+					fprintf(stdout, ") : ");
 					printType(e->u.eFunction.resultType);
 					break;
 #ifdef SHOW_OFFSETS
 				case ENTRY_VARIABLE:
-					printf("[%d]", e->u.eVariable.offset);
+					fprintf(stdout, "[%d]", e->u.eVariable.offset);
 					break;
 				case ENTRY_PARAMETER:
-					printf("[%d]", e->u.eParameter.offset);
+					fprintf(stdout, "[%d]", e->u.eParameter.offset);
 					break;
 				case ENTRY_TEMPORARY:
-					printf("[%d]", e->u.eTemporary.offset);
+					fprintf(stdout, "[%d]", e->u.eTemporary.offset);
 					break;
 #endif
 				}
 				e = e->nextInScope;
 				if (e != NULL)
-					printf(", ");
+					fprintf(stdout, ", ");
 		 }
 			scp = scp->parent;
-		printf("\n");
+		fprintf(stdout, "\n");
 		}
-		printf("----------------------------------------\n");
+		fprintf(stdout, "----------------------------------------\n");
 }
 
 
@@ -409,7 +409,7 @@ node *get_node(SymbolEntry *item)
 
 	temp = (node *) malloc(sizeof(node));
 	if (temp == NULL)
-		printf("\nMemory Cannot be allocated");
+		fprintf(stdout, "\nMemory Cannot be allocated");
 	temp->data = item;
 	temp->next = NULL;
 	return temp;
@@ -441,10 +441,10 @@ void Display(node **head)
 
 	temp = *head;
 	if (Sempty(temp))
-		printf("\nThe stack is empty!");
+		fprintf(stdout, "\nThe stack is empty!");
 	else {
 		while (temp != NULL) {
-		 //printf("%d\n", temp->data);
+		 //fprintf(stdout, "%d\n", temp->data);
 		 temp = temp->next;
 		}
 	}
@@ -477,7 +477,7 @@ node *get_nodeL(Type item)
 
 	temp = (node *) malloc(sizeof(node));
 	if (temp == NULL)
-		printf("\nMemory Cannot be allocated");
+		fprintf(stdout, "\nMemory Cannot be allocated");
 	temp->dataL = item;
 	temp->next = NULL;
 	return temp;
@@ -509,10 +509,10 @@ void DisplayL(node **head)
 
 	temp = *head;
 	if (SemptyL(temp))
-		printf("\nThe stack is empty!");
+		fprintf(stdout, "\nThe stack is empty!");
 	else {
 		while (temp != NULL) {
-		 //printf("%d\n", temp->data);
+		 //fprintf(stdout, "%d\n", temp->data);
 		 temp = temp->next;
 		}
 	}
@@ -548,7 +548,7 @@ node *get_nodeSE(SymbolEntry *item)
 
 	temp = (node *) malloc(sizeof(node));
 	if (temp == NULL)
-		printf("\nMemory Cannot be allocated");
+		fprintf(stdout, "\nMemory Cannot be allocated");
 	temp->dataSE = item;
 	temp->next = NULL;
 	return temp;
@@ -580,10 +580,10 @@ void DisplaySE(node **head)
 
 	temp = *head;
 	if (SemptySE(temp))
-		printf("\nThe stack is empty!");
+		fprintf(stdout, "\nThe stack is empty!");
 	else {
 		while (temp != NULL) {
-		 //printf("%d\n", temp->data);
+		 //fprintf(stdout, "%d\n", temp->data);
 		 temp = temp->next;
 		}
 	}
@@ -614,7 +614,7 @@ node *get_nodeArray(int item)
 	node *temp;
 	temp = (node *) malloc(sizeof(node));
 	if (temp == NULL)
-		printf("\nMemory Cannot be allocated");
+		fprintf(stdout, "\nMemory Cannot be allocated");
 	temp->flag = item;
 	temp->next = NULL;
 	return temp;

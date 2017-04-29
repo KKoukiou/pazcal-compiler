@@ -9,15 +9,15 @@ void Quads_to_Assembly(qnode **head) {
         qnode *temp;
         temp = *head;
         if (temp == NULL)
-                printf("\nThe list is empty!\n");
+                fprintf(stdout, "\nThe list is empty!\n");
         else {
                 while (temp != NULL) {
 			switch(temp->op){
 			case OP_UNIT:
-				printf("%s\tproc near\npush bp\nmov bp,sp\nsub sp,size", temp->x->value.se->id);
+				fprintf(stdout, ("%s\tproc near\npush bp\nmov bp,sp\nsub sp,size", temp->x->value.se->id);
 				break;
 			case OP_ENDU:
-				printf("%s\tmov sp,bp\npop bp\nret\n%s\tendp", temp->x->value.se->id);
+				fprintf(stdout, ("%s\tmov sp,bp\npop bp\nret\n%s\tendp", temp->x->value.se->id);
 				break;
 			case OP_JUMP:
 				break;
@@ -55,7 +55,7 @@ void Quads_to_Assembly(qnode **head) {
 					loadReal(temp->y);	
 				else load(dx,temp->y);
 				if (temp->x->type == QUAD_REAL || temp->y->type == QUAD_REAL)
-					printf("faddp ax,dx\n");
+					fprintf(stdout, ("faddp ax,dx\n");
 				else print("add ax,dx\n");
 				if (temp->z->type == QUAD_REAL)
 					storeReal(temp->z);
@@ -69,7 +69,7 @@ void Quads_to_Assembly(qnode **head) {
 					loadReal(temp->y);	
 				else load(dx,temp->y);
 				if (temp->x->type == QUAD_REAL || temp->y->type == QUAD_REAL)
-					printf("fsubp ax,dx\n");
+					fprintf(stdout, ("fsubp ax,dx\n");
 				else print("sub ax,dx\n");
 				if (temp->z->type == QUAD_REAL)
 					storeReal(temp->z);
@@ -95,9 +95,9 @@ void Quads_to_Assembly(qnode **head) {
 				break;
 			case OP_ARRAY:
 				load(ax ,y);
-				printf("mov cx,size\nimul cx\n");
+				fprintf(stdout, ("mov cx,size\nimul cx\n");
 				loadAddr(cx,x);
-				printf("add ax,cx\n");
+				fprintf(stdout, ("add ax,cx\n");
 				store(ax,z);
 				break;
 			default:
@@ -109,23 +109,23 @@ void Quads_to_Assembly(qnode **head) {
 }
 
 getAR(quad * q){
-	printf("mov si,word ptr [bp+4]\n");
+	fprintf(stdout, ("mov si,word ptr [bp+4]\n");
 	int rep = n_cur->nestingLevel - q->e->nestingLevel-1;
 	int i;
-	for(i=0;i<rep;++i) printf("mov si,word ptr [si+4]\n");
+	for(i=0;i<rep;++i) fprintf(stdout, "mov si,word ptr [si+4]\n");
 }
 
 updateAL(){
 	if (n_p < n_x)
-		printf("push bp\n");
+		fprintf(stdout, ("push bp\n");
 	else (n_p == n_x)
-		printf("push word ptr [bp+4]\n");
+		fprintf(stdout, ("push word ptr [bp+4]\n");
 	else {
-		printf("mov si,word ptr [bp+4]\n");
+		fprintf(stdout, ("mov si,word ptr [bp+4]\n");
 		int rep = n_p->nestingLevel - n_x->nestingLevel-1;
 		int i;
-		for(i=0;i<rep;++i) printf("mov si,word ptr [si+4]\n");
-		printf("push word ptr [si+4]\n");
+		for(i=0;i<rep;++i) fprintf(stdout, "mov si,word ptr [si+4]\n");
+		fprintf(stdout, ("push word ptr [si+4]\n");
 	}
 }
 
@@ -134,37 +134,37 @@ load(R, quad * a){
 	case QUAD_SE:
 		if(n_cur->nestingLevel == a->value.se->nestingLevel)
 			if(a->value.se->entryType == ENTRY_PARAMETER && a->value.se->u.eParameter.mode == PASS_BY_REFERENCE){
-				printf("mov si, word ptr [si + offset]\n");
-				printf("mov R,size ptr [si]\n");
+				fprintf(stdout, ("mov si, word ptr [si + offset]\n");
+				fprintf(stdout, ("mov R,size ptr [si]\n");
 			}
-			else printf("mov R, size ptr [bp + offset]\n");
+			else fprintf(stdout, "mov R, size ptr [bp + offset]\n");
 		else 
 			if(a->value.se->entryType == ENTRY_PARAMETER && a->value.se->u.eParameter.mode == PASS_BY_REFERENCE){
 				getAR(a);
-				printf("mov si, word ptr [si + offset]\n");
-				printf("mov R,size ptr [si]\n");
+				fprintf(stdout, ("mov si, word ptr [si + offset]\n");
+				fprintf(stdout, ("mov R,size ptr [si]\n");
 			}
-			else getAR(a),printf("mov R,size ptr [si+offset]\n");
+			else getAR(a),fprintf(stdout, "mov R,size ptr [si+offset]\n");
 		break;
 	case QUAD_INTEGER:
-		printf("mov R,%d", a->value.intval);
+		fprintf(stdout, ("mov R,%d", a->value.intval);
 		break;
 	case QUAD_CHAR:
-		printf("mov R,",a->value.intval);
+		fprintf(stdout, ("mov R,",a->value.intval);
 		break;
 	case QUAD_BOOL:
-		printf("mov R,%d", a->value.intval);
+		fprintf(stdout, ("mov R,%d", a->value.intval);
 		break;
 	/*case QUAD_REAL:
-		printf(",%Lf", a->value.floatval);
+		fprintf(stdout, (",%Lf", a->value.floatval);
 		break;
 	case QUAD_STR:
-		printf(",%s", a->value.strval);
+		fprintf(stdout, (",%s", a->value.strval);
 		break;
 	*/
 	case QUAD_POINTER:
 		load(di,x);
-		printf("mov R,size ptr[di]\n");
+		fprintf(stdout, ("mov R,size ptr[di]\n");
 		break;
 	default:
 		break;
@@ -175,21 +175,21 @@ load(R, quad * a){
 loadAddr(R,a){
 	switch (a->type){
 	case QUAD_STR:
-		printf("lea R,byte ptr a->value.strval ");
+		fprintf(stdout, ("lea R,byte ptr a->value.strval ");
 		break;
 	}
 	case QUAD_SE:
 		if(n_cur->nestingLevel == a->value.se->nestingLevel)
 			if(a->value.se->entryType == ENTRY_PARAMETER && a->value.se->u.eParameter.mode == PASS_BY_REFERENCE){
-				printf("mov R, word ptr [bp + offset]\n");
+				fprintf(stdout, ("mov R, word ptr [bp + offset]\n");
 			}
-			else printf("lea R, size ptr [bp + offset]\n");
+			else fprintf(stdout, "lea R, size ptr [bp + offset]\n");
 		else 
 			if(a->value.se->entryType == ENTRY_PARAMETER && a->value.se->u.eParameter.mode == PASS_BY_REFERENCE){
 				getAR(a);
-				printf("mov R,word ptr [si + offset]\n");
+				fprintf(stdout, ("mov R,word ptr [si + offset]\n");
 			}
-			else getAR(a),printf("lea R,size ptr [si+offset]\n");
+			else getAR(a),fprintf(stdout, "lea R,size ptr [si+offset]\n");
 		break;
 	case QUAD_POINTER:
 		load(R,x);

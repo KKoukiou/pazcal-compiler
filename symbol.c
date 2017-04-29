@@ -649,36 +649,36 @@ bool equalType (Type type1, Type type2)
 void printType (Type type)
 {
     if (type == NULL) {
-        printf("<undefined>");
+        fprintf(stdout, "<undefined>");
         return;
     }
     
     switch (type->kind) {
         case TYPE_VOID:
-            printf("void");
+            fprintf(stdout, "void");
             break;
         case TYPE_INTEGER:
-            printf("integer");
+            fprintf(stdout, "integer");
             break;
         case TYPE_BOOLEAN:
-            printf("boolean");
+            fprintf(stdout, "boolean");
             break;
         case TYPE_CHAR:
-            printf("char");
+            fprintf(stdout, "char");
             break;
         case TYPE_REAL:
-            printf("real");
+            fprintf(stdout, "real");
             break;
         case TYPE_ARRAY:
-            printf("array [%d] of ", type->size);
+            fprintf(stdout, "array [%d] of ", type->size);
             printType(type->refType);
             break;
         case TYPE_IARRAY:
-            printf("array of ");
+            fprintf(stdout, "array of ");
             printType(type->refType);
             break;
         case TYPE_POINTER:
-            printf("^");
+            fprintf(stdout, "^");
             printType(type->refType);
             break;
     }
@@ -687,5 +687,5 @@ void printType (Type type)
 void printMode (PassMode mode)
 {
     if (mode == PASS_BY_REFERENCE)
-        printf("var ");
+        fprintf(stdout, "var ");
 }	

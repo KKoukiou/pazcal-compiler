@@ -1,0 +1,16 @@
+a.asm
+a.imm
+assembly.o
+compiler
+error.o
+general.o
+inter.o
+lexer.o
+log.txt
+parser.c
+parser.h
+parser.o
+parser.output
+routines.o
+symbol.o
+lexer.c
